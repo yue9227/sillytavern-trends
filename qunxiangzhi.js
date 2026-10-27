@@ -2361,6 +2361,75 @@ const CSS = `
 .lx-theme-item { border-width: 1px; border-radius: 11px; }
 .lx-theme-item.active { box-shadow: 0 0 0 2px var(--lx-gold); border-color: var(--lx-gold); }
 .lx-rel-card, .lx-foreshadow-item, .lx-preg-card { border-radius: 11px; background: var(--lx-card-bg); }
+/* 有边角的框架感：双线边框、金边、卡片角标 */
+#lx-panel, #lx-settings {
+    border-radius: 18px;
+    background:
+        radial-gradient(circle at 18% 0%, var(--lx-card-bg), transparent 46%),
+        var(--lx-bg);
+    box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,0.35),
+        0 0 0 4px var(--lx-card-bg),
+        var(--lx-shadow);
+}
+#lx-panel::before, #lx-settings::before {
+    content: "";
+    position: absolute;
+    inset: 5px;
+    border: 1px solid var(--lx-border);
+    border-radius: 13px;
+    opacity: 0.5;
+    pointer-events: none;
+}
+.lx-header {
+    border-bottom: 1px solid var(--lx-border);
+    background: linear-gradient(180deg, var(--lx-card-bg), transparent);
+}
+.lx-tab {
+    border: 1px solid transparent !important;
+    background: var(--lx-event-bg);
+}
+.lx-tab.active {
+    border-color: var(--lx-gold) !important;
+    background: linear-gradient(180deg, rgba(255,255,255,0.20), transparent), var(--lx-gold);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 3px 9px rgba(0,0,0,0.14);
+}
+.lx-npc-card, .lx-preg-card, .lx-rel-card, .lx-foreshadow-item {
+    position: relative;
+    border-left: 3px solid var(--lx-gold);
+    border-radius: 12px;
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.35),
+        0 4px 14px rgba(0,0,0,0.06);
+}
+.lx-npc-card::before, .lx-preg-card::before, .lx-rel-card::before, .lx-foreshadow-item::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 20px;
+    height: 20px;
+    border-top: 2px solid var(--lx-border);
+    border-right: 2px solid var(--lx-border);
+    border-top-right-radius: 12px;
+    opacity: 0.55;
+    pointer-events: none;
+}
+.lx-event {
+    position: relative;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.30), 0 3px 12px rgba(0,0,0,0.05);
+}
+.lx-btn {
+    background: linear-gradient(180deg, var(--lx-card-bg), transparent);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.28);
+}
+.lx-footer .lx-btn:first-child {
+    background: linear-gradient(180deg, rgba(255,255,255,0.20), transparent), var(--lx-gold);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 4px 12px rgba(0,0,0,0.16);
+}
+.lx-field {
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.25);
+}
 /* 手机 / 窄屏：仍然是有边距的悬浮窗，不铺满全屏 */
 @media (max-width: 640px), (max-height: 520px) {
     #lx-ball { width: 50px; height: 50px; }
