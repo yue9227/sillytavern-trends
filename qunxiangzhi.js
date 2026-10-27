@@ -2705,6 +2705,11 @@ function syncViewportVars() {
     state.root.style.setProperty('--lx-vh', compactHeight + 'px');
     state.root.style.setProperty('--lx-vv-top', vp.offsetTop + 'px');
     state.root.style.setProperty('--lx-vv-left', vp.offsetLeft + 'px');
+    // 宿主也用真实像素尺寸，避免安卓把 100% 解析成布局视口（980px）或 0。
+    if (state.host) {
+        state.host.style.width = compactWidth + 'px';
+        state.host.style.height = compactHeight + 'px';
+    }
     let coarse = false;
     try { coarse = !!(win.matchMedia && win.matchMedia('(pointer: coarse)').matches); } catch (e) { /* ignore */ }
     state.root.classList.toggle('lx-compact', compactWidth <= 640 || compactHeight <= 520 || (coarse && compactWidth <= 1024));
