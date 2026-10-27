@@ -1546,7 +1546,7 @@ const CSS = `
     --lx-vw: 100vw;
     --lx-vv-top: 0px;
     --lx-vv-left: 0px;
-    position: fixed;
+    position: absolute;
     inset: 0;
     z-index: 2147483600;
     pointer-events: none;
@@ -1561,7 +1561,7 @@ const CSS = `
 
 /* 悬浮球：纯 CSS 罗盘，无文字 */
 #lx-ball {
-    position: fixed;
+    position: absolute;
     right: 14px;
     top: 28%;
     width: 50px;
@@ -1697,7 +1697,7 @@ const CSS = `
 
 /* 遮罩 */
 #lx-mask {
-    position: fixed;
+    position: absolute;
     inset: 0;
     background: rgba(0,0,0,0.56);
     backdrop-filter: blur(2px);
@@ -1711,7 +1711,7 @@ const CSS = `
 
 /* 主面板 / 设置面板 */
 #lx-panel, #lx-settings {
-    position: fixed;
+    position: absolute;
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%) scale(0.96);
@@ -2369,9 +2369,10 @@ const CSS = `
     #lx-panel, #lx-settings {
         left: calc(var(--lx-vv-left, 0px) + 14px);
         top: calc(var(--lx-vv-top, 0px) + 28px);
-        width: calc(var(--lx-vw, 100vw) - 28px);
-        height: calc(var(--lx-vh, 100dvh) - 56px);
-        max-height: none;
+        width: calc(100% - 28px);
+        max-width: 520px;
+        height: calc(100% - 56px);
+        max-height: 760px;
         transform: none;
         border-radius: 16px;
         border: 1px solid var(--lx-border);
@@ -2409,9 +2410,10 @@ const CSS = `
 #lx-root.lx-compact #lx-settings {
     left: calc(var(--lx-vv-left, 0px) + 14px);
     top: calc(var(--lx-vv-top, 0px) + 28px);
-    width: calc(var(--lx-vw, 100vw) - 28px);
-    height: calc(var(--lx-vh, 100dvh) - 56px);
-    max-height: none;
+    width: calc(100% - 28px);
+    max-width: 520px;
+    height: calc(100% - 56px);
+    max-height: 760px;
     transform: none;
     border-radius: 16px;
     border: 1px solid var(--lx-border);
@@ -4155,7 +4157,7 @@ function mount() {
     host.id = HOST_ID;
     const iframeId = getIframeId();
     if (iframeId) host.setAttribute('data-th-iframe-id', iframeId);
-    host.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;z-index:2147483600;pointer-events:none;';
+    host.style.cssText = 'position:fixed;left:0;top:0;width:100%;height:100%;z-index:2147483600;pointer-events:none;';
     doc.body.appendChild(host);
 
     let shadow = null;
