@@ -2365,19 +2365,20 @@ const CSS = `
 @media (max-width: 640px), (max-height: 520px) {
     #lx-ball { width: 50px; height: 50px; }
     #lx-mask { backdrop-filter: none; -webkit-backdrop-filter: none; }
+    /* 不用 dvh，直接用 JS 量出来的 visualViewport 尺寸，安卓 WebView 更稳 */
     #lx-panel, #lx-settings {
-        left: 50%;
-        top: 50%;
-        width: min(94vw, 520px);
-        height: min(78dvh, 760px);
-        max-height: calc(100dvh - 24px);
-        transform: translate(-50%, -50%) scale(0.97);
+        left: calc(var(--lx-vv-left, 0px) + 14px);
+        top: calc(var(--lx-vv-top, 0px) + 28px);
+        width: calc(var(--lx-vw, 100vw) - 28px);
+        height: calc(var(--lx-vh, 100dvh) - 56px);
+        max-height: none;
+        transform: none;
         border-radius: 16px;
         border: 1px solid var(--lx-border);
         backdrop-filter: none;
         -webkit-backdrop-filter: none;
     }
-    #lx-panel.show, #lx-settings.show { transform: translate(-50%, -50%) scale(1); }
+    #lx-panel.show, #lx-settings.show { transform: none; }
     .lx-header { padding-top: 10px; min-height: 48px; }
     .lx-tabs {
         display: grid;
@@ -2390,8 +2391,8 @@ const CSS = `
         border-right: 1px solid var(--lx-border);
         border-bottom: 1px solid var(--lx-border);
     }
-    .lx-tab:nth-child(4n) { border-right: none; }
-    .lx-tab:nth-child(n+9) { border-bottom: none; }
+    .lx-tab:nth-child(5n) { border-right: none; }
+    .lx-tab:nth-child(n+6) { border-bottom: none; }
     .lx-tab:last-child { border-right: none; }
     .lx-tab.active::after { left: 18%; right: 18%; bottom: -1px; }
     .lx-content { padding: 10px; }
@@ -2403,6 +2404,39 @@ const CSS = `
     .lx-settings-tabs { position: sticky; top: 0; z-index: 1; }
     .lx-theme-grid { grid-template-columns: repeat(3, 1fr); }
 }
+/* 安卓 iframe 兜底：不依赖媒体查询，按 visualViewport 宽度加 .lx-compact */
+#lx-root.lx-compact #lx-panel,
+#lx-root.lx-compact #lx-settings {
+    left: calc(var(--lx-vv-left, 0px) + 14px);
+    top: calc(var(--lx-vv-top, 0px) + 28px);
+    width: calc(var(--lx-vw, 100vw) - 28px);
+    height: calc(var(--lx-vh, 100dvh) - 56px);
+    max-height: none;
+    transform: none;
+    border-radius: 16px;
+    border: 1px solid var(--lx-border);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+#lx-root.lx-compact #lx-panel.show,
+#lx-root.lx-compact #lx-settings.show { transform: none; }
+#lx-root.lx-compact .lx-header { padding-top: 10px; min-height: 48px; }
+#lx-root.lx-compact .lx-tabs {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+    padding: 8px 10px;
+}
+#lx-root.lx-compact .lx-tab { padding: 7px 1px; font-size: 10.5px; }
+#lx-root.lx-compact .lx-content { padding: 10px 12px 14px; }
+#lx-root.lx-compact .lx-search { padding: 0 10px 8px; }
+#lx-root.lx-compact .lx-input,
+#lx-root.lx-compact .lx-select { font-size: 16px; }
+#lx-root.lx-compact .lx-textarea { font-size: 13px; }
+#lx-root.lx-compact .lx-footer { padding: 10px 10px calc(10px + env(safe-area-inset-bottom)); }
+#lx-root.lx-compact .lx-btn { font-size: 10.5px; padding: 9px 2px; }
+#lx-root.lx-compact .lx-settings-body { padding: 12px; }
+#lx-root.lx-compact .lx-settings-tabs { position: sticky; top: 0; z-index: 1; }
 @media (prefers-reduced-motion: reduce) {
     #lx-root *, #lx-root *::before, #lx-root *::after {
         animation-duration: 0.001ms !important;
@@ -2545,10 +2579,29 @@ function viewportSize() {
 function syncViewportVars() {
     if (!state.root) return;
     const vp = viewportSize();
-    state.root.style.setProperty('--lx-vw', vp.width + 'px');
-    state.root.style.setProperty('--lx-vh', vp.height + 'px');
+    const win = state.win || getWin();
+    let layoutWidth = vp.width;
+    let layoutHeight = vp.height;
+    let screenWidth = vp.width;
+    let innerWidth = vp.width;
+    let innerHeight = vp.height;
+    try { layoutWidth = win.document.documentElement.clientWidth || vp.width; } catch (e) { /* ignore */ }
+    try { layoutHeight = win.document.documentElement.clientHeight || vp.height; } catch (e) { /* ignore */ }
+    try { screenWidth = win.screen && win.screen.width ? win.screen.width : vp.width; } catch (e) { /* ignore */ }
+    try { innerWidth = win.innerWidth || vp.width; } catch (e) { /* ignore */ }
+    try { innerHeight = win.innerHeight || vp.height; } catch (e) { /* ignore */ }
+
+    // 酒馆助手的脚本 iframe 没有 viewport meta，安卓上 CSS 媒体查询可能仍按 980px 桌面宽度算。
+    // 取 visualViewport / inner / 布局视口 / 屏幕里最小的尺寸，防止面板比屏幕还大被裁掉。
+    const compactWidth = Math.min(vp.width, layoutWidth, screenWidth, innerWidth);
+    const compactHeight = Math.min(vp.height, layoutHeight, innerHeight);
+    state.root.style.setProperty('--lx-vw', compactWidth + 'px');
+    state.root.style.setProperty('--lx-vh', compactHeight + 'px');
     state.root.style.setProperty('--lx-vv-top', vp.offsetTop + 'px');
     state.root.style.setProperty('--lx-vv-left', vp.offsetLeft + 'px');
+    let coarse = false;
+    try { coarse = !!(win.matchMedia && win.matchMedia('(pointer: coarse)').matches); } catch (e) { /* ignore */ }
+    state.root.classList.toggle('lx-compact', compactWidth <= 640 || compactHeight <= 520 || (coarse && compactWidth <= 1024));
 }
 
 function positionBall() {
@@ -3169,6 +3222,7 @@ function buildSettingsHTML() {
 function openSettings() {
     if (!state.refs.settings) return;
     state.refs.settings.innerHTML = buildSettingsHTML();
+    syncViewportVars();
     state.refs.settings.classList.add('show');
     state.refs.settings.tabIndex = -1;
     state.ui.settingsOpen = true;
@@ -3188,6 +3242,7 @@ function openPanel() {
     if (!state.refs.panel) return;
     renderAll();
     applyTheme();
+    syncViewportVars();
     state.refs.mask.classList.add('show');
     state.refs.panel.classList.add('show');
     state.refs.panel.tabIndex = -1;
