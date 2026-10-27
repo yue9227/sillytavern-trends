@@ -2337,7 +2337,7 @@ const CSS = `
     background: var(--lx-card-bg);
     color: var(--lx-gold);
     font-weight: 700;
-    box-shadow: inset 0 -2px 0 var(--lx-gold);
+    box-shadow: inset 0 0 0 1px var(--lx-gold), inset 0 -2px 0 var(--lx-gold);
 }
 .lx-tab.active::after { display: none; }
 .lx-tab-num { background: transparent; color: inherit; }
@@ -2351,6 +2351,21 @@ const CSS = `
     padding: 7px 9px;
 }
 .lx-content { padding: 10px 12px 14px; }
+.lx-section-head {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: block;
+    padding: 5px 10px;
+    margin-bottom: 9px;
+    border: 1px solid var(--lx-border);
+    border-radius: 2px;
+    background: var(--lx-bg-solid);
+    color: var(--lx-gold);
+    font-size: 11.5px;
+    letter-spacing: 3px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.25);
+}
 .lx-npc-card {
     position: relative;
     border: 1px solid var(--lx-border);
@@ -2776,7 +2791,8 @@ function panelFor(name) {
 
 function setPanel(name, html) {
     const panel = panelFor(name);
-    if (panel) panel.innerHTML = html;
+    if (!panel) return;
+    panel.innerHTML = `<div class="lx-section-head">${escapeHtml(name)}</div>` + html;
 }
 
 function textMatch(...parts) {
