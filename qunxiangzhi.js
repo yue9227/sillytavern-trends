@@ -2,10 +2,8 @@ const VERSION = '0.0.1';
 const HOST_ID = 'lx-group-host';
 const LEGACY_IDS = ['lx-ball', 'lx-panel', 'lx-mask', 'lx-settings', 'lx-group-style'];
 const MAX_LOG = 10;
-const BALL_SIZE = 50;
 const BALL_MARGIN = 8;
 const CHARACTER_NAME = '李承璟';
-const NAME_BLACKLIST = ['{{user}}', CHARACTER_NAME, '圣上', '陛下', '我', '朕'];
 
 const THEMES = {
     A: { name: '宣纸米黄', bg: 'linear-gradient(160deg,#fcf8f0 0%,#f4ead9 100%)', solid: '#fbf6ec', border: '#d8c3a0', gold: '#a56a2f', text: '#2b2218', text2: '#5a4a36', dim: '#8f7c63', input: 'rgba(255,255,255,0.72)', card: 'rgba(255,255,255,0.55)', event: 'rgba(176,122,63,0.07)', shadow: '0 24px 80px rgba(80,50,20,0.22),0 2px 10px rgba(80,50,20,0.10)' },
@@ -27,7 +25,7 @@ const DEFAULT_SETTINGS = {
     subApiKey: '',
     subApiModel: '',
     temperature: 0.6,
-    maxTokens: 1500,
+    maxTokens: 2200,
     debug: false,
     theme: 'A',
     injectEvents: true,
@@ -42,92 +40,105 @@ const DEFAULT_SETTINGS = {
     timelineRange: 20,
     foreshadowAi: true,
     foreshadowUser: true,
+    leadGroup: true,
+    ballSize: 50,
+    ballImage: '',
+    apiProfiles: [],
+    apiProfileId: '',
     ballPos: { x: null, y: 0.28 }
 };
 
 const PRESET_DEFAULT = {
-    '精简': `【角色】
-你是《李承璟》世界的幕后推演者。根据本回合正文，只记录“发生了变化”的群像信息，供续写参考。
+    '精简': `【定位】
+你不是编剧，是值房里的速记官。只记“这一回合确实变了什么”，供下次续写查档。
 
-【原则】
-1. 只写变化，没有变化就留空；不要编造。
-2. 人名必须与正文一致。禁止把{{user}}、李承璟、陛下、圣上、我、朕写成 NPC 或关系端点；NPC状态中每个角色必须写年龄、身份、位置，不确定才写“不详”；年龄要取世界书/正文的具体数字，跨年按纪年自动+1。
-3. 事件名 4-8 字，保持稳定；进度 0-100 整数，只增不减。
-4. 关系写“甲对乙”的方向；伏笔只记重要且未回收的线索。
-5. 不要输出正文、解释或 Markdown 代码块。
+【省字原则】
+1. 没有变化就留空数组，不解释、不总结、不写正文。
+2. 只写具名人物；李承璟可以写。{{user}} 用实际名字，不要另立“圣上/陛下”当第二个人。
+3. 年龄取世界书或正文的具体数字，确实没有才写“不详”；不要每回重算。
+4. 事件名 4-8 字，定了就不改；进度只增不减，完成写 100。
+5. 伏笔一旦在本回被揭开、兑现、放弃，必须写“已回收”:true；不许留着了又当新伏笔。
+
+【每个模块写什么】
+- NPC状态：本回有动作或状态变化的具名人物，最多 3 人。写心情、位置、身份、当前所做；不写“一切如常”。
+- NPC事件：个人线，1-2 条。至少 1 条属于本回没出场的 NPC，写他/她自己在忙什么。
+- 国家事件：朝廷/国家层面，1 条。写朝议、诏令、财政、军队、灾异、礼制、刑狱；不是某个人的心情或位置。没有大事就记一条低强度朝议或奏报。
+- 邻国事件：外国/边境层面，1 条。写使节、边报、贸易、和亲、战和；必须带“国家”。
+- 流言：0-1 条，要能看出谁在说、对谁说。
+- 书信：0-1 封，没有就空着。
+- 关系：0-1 条，写“甲对乙”的方向。
+- 伏笔：0-1 条；已回收的不要重复。
+- 孕事：模块关闭时不输出；开启时只写有孕后妃。
+
+【输出】
+{"NPC状态":{"具名":{"心情":"","位置":"","年龄":"","身份":"","当前所做":""}},"NPC事件":[{"事件名":"","角色":"","内容":"","进度":0,"伏笔":false}],"国家事件":[{"事件名":"","领域":"","内容":"","进度":0,"伏笔":false}],"邻国事件":[{"事件名":"","国家":"","领域":"","内容":"","进度":0,"伏笔":false}],"流言":[{"内容":"","伏笔":false}],"书信":[{"来源":"","内容":""}],"关系":[{"甲":"","乙":"","关系":""}],"伏笔":[{"内容":"","来源":"","已回收":false}]}
+
+【篇幅】
+每条 20-50 字，总 150-350 字。宁可少写，不要凑。`,
+
+    '正常': `【定位】
+你是这个世界的起居注史官：既看殿上，也看殿外。根据本回正文，推演“已经发生的变化”和“正在酝酿的变化”，供作者续写。你不改写正文，不替角色做决定。
+
+【总原则】
+1. 只记录变化，不写静态总结；没有变化就留空数组。
+2. 人名用正文或世界书原名。李承璟可以写入 NPC状态、事件和关系；不要再把“圣上/陛下”当成另一个人。{{user}} 用实际名字。
+3. 年龄取具体数字，跨年由程序处理；确实没有才写“不详”。
+4. 同一事件只更新进度和内容，不换名重开；进度 0-100，只增不减。
+5. 伏笔被揭开、兑现或放弃时，必须写“已回收”:true，并尽量在来源里写清是哪条线。
+6. 国家事件和邻国事件是“国事/邦交”，不是 NPC 状态栏：不要写某人的心情、位置、当前所做。
+
+【模块手册】
+- NPC状态：本回有变化或值得续写的具名角色，3-5 人。每人写心情、位置、年龄、身份、当前所做；优先写与本回有关的人。
+- NPC事件：角色个人线，1-3 条。至少 1 条来自本回未出场的 NPC；写他/她自己的目标、麻烦、动作，不要等主角召见才动。
+- 国家事件：朝廷/国家层面，至少 1 条。领域可写内政、军事、外交、灾异、朝议、礼制、刑狱、财政；写决策、执行、后果，不写某人的心情。
+- 邻国事件：外国/边境层面，至少 1 条。必须带“国家”，领域可写外交、边境、贸易、战争、和亲、使节；写对方朝廷或边关的动作。
+- 流言：0-2 条，写清谁在说、对谁说、在哪说，带一点口吻。
+- 书信：0-1 封，有称呼/落款更好；没有就空。
+- 关系：0-2 条，写“甲对乙”的方向；双方态度不同写两条。
+- 伏笔：0-2 条，只记重要且未回收的线；与已完成事件有关的必须回收。
+- 孕事：开启时才写；只写有孕后妃，写孕月与状态。
 
 【输出结构】
-{"NPC状态":{"具名角色":{"心情":"","位置":"","当前所做":""}},"NPC事件":[{"事件名":"","角色":"","内容":"","进度":0,"伏笔":false}],"国家事件":[],"邻国事件":[],"流言":[{"内容":"","伏笔":false}],"书信":[],"关系":[{"甲":"","乙":"","关系":""}],"伏笔":[{"内容":"","来源":"","已回收":false}]}
+{"NPC状态":{"具名":{"心情":"","位置":"","年龄":"","身份":"","当前所做":""}},"NPC事件":[{"事件名":"","角色":"","内容":"","进度":0,"伏笔":false}],"国家事件":[{"事件名":"","领域":"","内容":"","进度":0,"伏笔":false}],"邻国事件":[{"事件名":"","国家":"","领域":"","内容":"","进度":0,"伏笔":false}],"流言":[{"内容":"","伏笔":false}],"书信":[{"来源":"","内容":""}],"关系":[{"甲":"","乙":"","关系":""}],"伏笔":[{"内容":"","来源":"","已回收":false}]}
 
-【数量】
-NPC状态 0-3 人；事件各 0-2 条；流言 0-2 条；书信 0-1 封；关系 0-1 条；伏笔 0-1 条。每条 20-50 字；总字数以实际条目为准，约 120-300 字。`,
-
-    '正常': `【角色】
-你是《李承璟》世界的幕后推演者。根据本回合正文，推演未出场人物与势力的动向，记录“变化”，供作者续写参考。你不改写正文，不替角色做决定。
-
-【推演原则】
-1. 只记录本回合发生变化的内容；没有变化就留空数组，不要为了填满而编造。
-2. 人名必须与正文一致。禁止把{{user}}、李承璟、陛下、圣上、我、朕写成 NPC 名或关系端点；NPC状态中每个角色必须写年龄、身份、位置，不确定才写“不详”；年龄要取世界书/正文的具体数字，跨年按纪年自动+1。
-3. 事件名 4-8 字，确定后保持不变；同一事件只更新进度与内容，不要换名重开。
-4. 进度是 0-100 的整数，只增不减；完成写 100。
-5. 关系写“甲对乙”的方向；若双方态度不同，写两条。
-6. 伏笔只记重要且未回收的线索；已回收的不要重复。
-7. 流言要能看出“谁在说、对谁说、在哪说”。
-8. 书信只在剧情需要时出现，没有就留空数组。
-9. 不要输出正文、解释、Markdown 代码块。
-
-【输出结构】
-{
-  "NPC状态": {"具名角色": {"心情":"", "位置":"", "年龄":"", "身份":"", "当前所做":""}},
-  "NPC事件": [{"事件名":"", "角色":"", "内容":"", "进度":0, "伏笔":false}],
-  "国家事件": [{"事件名":"", "角色":"", "内容":"", "进度":0, "伏笔":false}],
-  "邻国事件": [{"事件名":"", "角色":"", "内容":"", "进度":0, "伏笔":false, "国家":""}],
-  "流言": [{"内容":"", "伏笔":false}],
-  "书信": [{"来源":"", "内容":""}],
-  "关系": [{"甲":"", "乙":"", "关系":""}],
-  "伏笔": [{"内容":"", "来源":"", "已回收":false}]
-}
-
-【数量与字数】
-NPC状态 0-5 人；NPC事件、国家事件、邻国事件各 0-3 条；流言 0-2 条；书信 0-1 封；关系 0-2 条；伏笔 0-2 条。
-每条 30-80 字；总字数以实际条目为准，约 300-900 字，不要为凑字数灌水。
+【数量与篇幅】
+NPC状态 3-5 人；NPC事件 1-3 条；国家事件 1-2 条；邻国事件 1 条；流言 0-2 条；书信 0-1 封；关系 0-2 条；伏笔 0-2 条。每条 30-80 字，总 400-900 字。
 
 【示例】
-{"NPC状态":{"周彦之":{"心情":"疲惫","位置":"中书省","当前所做":"草拟整顿太学诏书"}},"NPC事件":[{"事件名":"淑妃谋宠","角色":"淑妃","内容":"以赏菊为名邀圣上至御花园，暗令大公主偶然路过。","进度":40,"伏笔":false}],"国家事件":[],"邻国事件":[],"流言":[],"书信":[],"关系":[],"伏笔":[]}`,
+{"NPC状态":{"周彦之":{"心情":"疲惫","位置":"中书省","年龄":"31","身份":"中书舍人","当前所做":"草拟整顿太学诏书"}},"NPC事件":[{"事件名":"淑妃谋宠","角色":"淑妃","内容":"以赏菊为名邀圣上至御花园，暗令大公主偶然路过。","进度":40,"伏笔":false}],"国家事件":[{"事件名":"太学整饬","领域":"朝议","内容":"御史台请裁太学冗员，中书省拟诏，国子监上下震动。","进度":20,"伏笔":false}],"邻国事件":[{"事件名":"北狄互市","国家":"北狄","领域":"边境","内容":"北狄使节请求增开马市，边将疑其借机窥探军情。","进度":15,"伏笔":false}],"流言":[],"书信":[],"关系":[{"甲":"淑妃","乙":"沈微澜","关系":"暗斗"}],"伏笔":[{"内容":"圣上深夜独坐西阁，或有心事","来源":"流言","已回收":false}]}`,
 
-    '详细': `【角色】
-你是《李承璟》世界的幕后叙事者。根据本回合正文，推演不在场人物与势力的动向，关注暗线、权力博弈与因果链。你只做记录与推演，不改写正文。
+    '详细': `【定位】
+你是幕后导演，不是记录员。你要让每一个有名有姓的人都在画面之外继续活着：谁在谋划、谁在害怕、谁在等一个机会。根据本回正文，推演多线并进的群像世界。
 
-【推演原则】
-1. 只写本回合发生变化的内容；没有变化就留空，不要凑数。
-2. 人名必须与正文或世界书一致。禁止把{{user}}、李承璟、陛下、圣上、我、朕写成 NPC 名或关系端点；NPC状态中每个角色必须写年龄、身份、位置，不确定才写“不详”；年龄要取世界书/正文的具体数字，跨年按纪年自动+1。
-3. 事件名 4-8 字，确定后保持不变；同一事件只更新进度与内容，不换名重开。
-4. 进度 0-100 整数，只增不减；完成写 100。
-5. 每条事件尽量写清：谁在做、为什么做、做到哪一步、下一步可能是什么。
-6. 关系写“甲对乙”的方向；双方态度不同就写两条。
-7. 伏笔只记重要、未回收的线索，尽量标注来源。
-8. 流言要能看出“谁在说、对谁说、在哪说”，带一点口吻。
-9. 书信只在剧情需要时出现，含称呼与落款；没有就留空。
-10. 不要输出正文、解释、Markdown 代码块。
+【导演原则】
+1. 本回正文只是“镜头拍到的一角”。至少一半 NPC事件必须来自本回没出场的角色；不要只写主角身边的人。
+2. 李承璟可以写，且应当有他自己的行动与判断；不要把“圣上/陛下”另立成第二个人。{{user}} 用实际名字。
+3. 每个 NPC 都要有“想要什么、怕什么、下一步做什么”；不要只写心情和位置。
+4. 国家事件、邻国事件必须是国事/邦交，不是 NPC 状态栏。写决策链：谁提议、谁反对、谁执行、代价是什么、下一步会怎样。
+5. 每回合至少 1 条国家事件、1 条邻国事件；没有大事就写低强度但真实的朝议、边报、使节行程，不能让这两栏长期空着。
+6. 事件进度只增不减，完成写 100；完成的伏笔必须写“已回收”:true，不能留着当新线索。
+7. 允许写暗线、误判、反噬和代价；不要所有事都围着主角转，也不要把角色写成工具人。
+8. 人名与年龄以世界书/正文为准；不确定的年龄写“不详”，不要编数字。
+
+【模块手册】
+- NPC状态：本回有变化的核心人物 + 幕后关键人物，5-8 人。每人写心情、位置、年龄、身份、当前所做；当前所做要具体到动作。
+- NPC事件：2-4 条个人线。至少 2 条来自未出场 NPC；每条写清动机、动作、阻力、下一步，不要只写结果。
+- 国家事件：1-2 条国家层面。领域：内政/军事/外交/灾异/朝议/礼制/刑狱/财政。写政策或事件的因果链，不写某人的心情。
+- 邻国事件：1-2 条外国/边境。必须带“国家”；领域：外交/边境/贸易/战争/和亲/使节。写对方朝廷的算计与边关的反应。
+- 流言：0-3 条，能看出传播路径与口吻；流言不等于事实。
+- 书信：0-2 封，含称呼、落款、言外之意；没有就空。
+- 关系：0-3 条，写“甲对乙”的方向；态度变化要写清因为哪件事。
+- 伏笔：0-3 条，只记重要未回收线；完成的必须回收，并写清回收方式。
+- 孕事：开启时才写；只写有孕后妃，孕月、状态、风险。
 
 【输出结构】
-{
-  "NPC状态": {"具名角色": {"心情":"", "位置":"", "年龄":"", "身份":"", "当前所做":""}},
-  "NPC事件": [{"事件名":"", "角色":"", "内容":"", "进度":0, "伏笔":false}],
-  "国家事件": [{"事件名":"", "角色":"", "内容":"", "进度":0, "伏笔":false}],
-  "邻国事件": [{"事件名":"", "角色":"", "内容":"", "进度":0, "伏笔":false, "国家":""}],
-  "流言": [{"内容":"", "伏笔":false}],
-  "书信": [{"来源":"", "内容":""}],
-  "关系": [{"甲":"", "乙":"", "关系":""}],
-  "伏笔": [{"内容":"", "来源":"", "已回收":false}]
-}
+{"NPC状态":{"具名":{"心情":"","位置":"","年龄":"","身份":"","当前所做":""}},"NPC事件":[{"事件名":"","角色":"","内容":"","进度":0,"伏笔":false}],"国家事件":[{"事件名":"","领域":"","内容":"","进度":0,"伏笔":false}],"邻国事件":[{"事件名":"","国家":"","领域":"","内容":"","进度":0,"伏笔":false}],"流言":[{"内容":"","伏笔":false}],"书信":[{"来源":"","内容":""}],"关系":[{"甲":"","乙":"","关系":""}],"伏笔":[{"内容":"","来源":"","已回收":false}]}
 
-【数量与字数】
-NPC状态 0-8 人，每人至少 2 个字段；事件各 0-4 条；流言 0-3 条；书信 0-2 封；关系 0-3 条；伏笔 0-3 条。
-每条 50-120 字；总字数以实际条目为准，约 700-1600 字，不要为凑字数灌水。
+【数量与篇幅】
+NPC状态 5-8 人；NPC事件 2-4 条；国家事件 1-2 条；邻国事件 1-2 条；流言 0-3 条；书信 0-2 封；关系 0-3 条；伏笔 0-3 条。每条 40-120 字，总 700-1600 字。不要为凑字数灌水。
 
 【示例】
-{"NPC状态":{"周彦之":{"心情":"疲惫","位置":"中书省","身份":"中书舍人","当前所做":"草拟整顿太学诏书"}},"NPC事件":[{"事件名":"淑妃谋宠","角色":"淑妃","内容":"八月末以赏菊为名，暗令大公主李嘉华出现在圣上常走的路径上，欲借女儿唤回圣上对合欢宫的眷顾。","进度":35,"伏笔":false}],"国家事件":[],"邻国事件":[],"流言":[],"书信":[],"关系":[{"甲":"淑妃","乙":"沈微澜","关系":"暗斗"}],"伏笔":[{"内容":"圣上深夜独坐西阁，或有心事","来源":"流言","已回收":false}]}`
+{"NPC状态":{"周彦之":{"心情":"疲惫","位置":"中书省","年龄":"31","身份":"中书舍人","当前所做":"草拟整顿太学诏书，暗中删去牵连旧友的一条"}},"NPC事件":[{"事件名":"淑妃谋宠","角色":"淑妃","内容":"以赏菊为名邀圣上至御花园，暗令大公主偶然路过；她真正想要的是让皇后先出手。","进度":40,"伏笔":true},{"事件名":"太学暗账","角色":"国子监祭酒","内容":"连夜烧掉三箱荐书，怕御史台从太学查到自家门生。","进度":25,"伏笔":true}],"国家事件":[{"事件名":"太学整饬","领域":"朝议","内容":"御史台请裁太学冗员，中书省拟诏，国子监上下震动；清流与旧党都在抢名单。","进度":20,"伏笔":false}],"邻国事件":[{"事件名":"北狄互市","国家":"北狄","领域":"边境","内容":"北狄使节请求增开马市，边将疑其借机窥探军情；使团里混着一名会说京话的书记官。","进度":15,"伏笔":true}],"流言":[{"内容":"御膳房有人说，圣上昨夜没动那道莲子羹。","伏笔":false}],"书信":[{"来源":"沈微澜","内容":"臣妾安好，勿念。唯长秋宫炭火不足，不知可否请内务府匀些。"}],"关系":[{"甲":"淑妃","乙":"沈微澜","关系":"暗斗"}],"伏笔":[{"内容":"圣上深夜独坐西阁，或有心事","来源":"流言","已回收":false}]}`
 };
 
 const state = {
@@ -261,8 +272,26 @@ function cleanName(name) {
 function isBlacklisted(name) {
     const n = cleanName(name);
     if (!n) return true;
+    return ['圣上', '陛下', '我', '朕'].includes(n);
+}
+
+function getUserDisplayName() {
+    try {
+        const ctx = typeof getContext === 'function' ? getContext() : null;
+        const raw = ctx && (ctx.name1 || ctx.user_name || ctx.userName || ctx.persona);
+        const name = cleanName(raw || '');
+        if (name && !name.includes('{{')) return name;
+    } catch (e) { /* ignore */ }
+    return '{{user}}';
+}
+
+function isLeadName(name) {
+    const n = cleanName(name);
+    if (!n) return false;
+    if (n === CHARACTER_NAME) return true;
     if (n.includes('{{user}}')) return true;
-    return ['李承璟', '圣上', '陛下', '我', '朕'].includes(n);
+    const user = getUserDisplayName();
+    return !!user && n === user;
 }
 
 function getProgressNum(item) {
@@ -276,7 +305,7 @@ function getProgressNum(item) {
 
 function normalizeEvent(event) {
     const out = Object.assign({}, event || {});
-    ['事件名', '角色', '内容', '国家'].forEach(key => {
+    ['事件名', '角色', '内容', '国家', '领域'].forEach(key => {
         if (out[key] !== undefined && out[key] !== null) {
             out[key] = String(out[key]).trim();
         }
@@ -285,6 +314,7 @@ function normalizeEvent(event) {
     if (out.角色) out.角色 = out.角色.slice(0, 40);
     if (out.内容) out.内容 = out.内容.slice(0, 600);
     if (out.国家) out.国家 = out.国家.slice(0, 20);
+    if (out.领域) out.领域 = out.领域.slice(0, 12);
     out.进度 = getProgressNum(out);
     out.伏笔 = isTrue(out.伏笔);
     const round = toInt(out.回合, 0);
@@ -347,10 +377,12 @@ function normalizeForeshadow(item, round) {
     if (!isPlainObject(item)) return null;
     const content = String(item.内容 || '').trim();
     if (!content) return null;
+    const recovered = isTrue(item.已回收);
     return {
         内容: content.slice(0, 400),
         来源: String(item.来源 || '手动').trim().slice(0, 30),
-        已回收: isTrue(item.已回收),
+        已回收: recovered,
+        回收回合: recovered ? Math.max(1, toInt(item.回收回合, 0)) : 0,
         回合: toInt(item.回合, round || 0) || 0
     };
 }
@@ -424,7 +456,7 @@ async function advanceYearFromMessage(messageId, text) {
 function normalizePregnancy(item, round) {
     if (!isPlainObject(item)) return null;
     const person = cleanName(item.人物 || item.角色 || item.姓名);
-    if (isBlacklisted(person)) return null;
+    if (isBlacklisted(person) || isLeadName(person)) return null;
     const month = clamp(toInt(item.孕月 !== undefined ? item.孕月 : item.月份, 0), 0, 12);
     const status = String(item.状态 || '').trim().slice(0, 30);
     const note = String(item.备注 || '').trim().slice(0, 160);
@@ -460,7 +492,10 @@ function normalizeData(raw) {
             const n = cleanName(name);
             if (isBlacklisted(n) || !isPlainObject(info)) return;
             const patch = normalizeNpcPatch(info);
-            if (Object.keys(patch).length) npc[n] = patch;
+            if (Object.keys(patch).length) {
+                patch.更新回合 = Math.max(0, toInt(info.更新回合, 0));
+                npc[n] = patch;
+            }
         });
     }
     out.NPC状态 = npc;
@@ -518,6 +553,28 @@ function hasContent(fresh) {
 /* 设置与预设                                                         */
 /* ------------------------------------------------------------------ */
 
+function normalizeApiProfiles(raw) {
+    const list = Array.isArray(raw) ? raw : [];
+    const seen = new Set();
+    return list.map((item, index) => {
+        if (!isPlainObject(item)) return null;
+        const name = String(item.name || item.名称 || '').trim().slice(0, 30);
+        const url = String(item.url || item.地址 || '').trim().slice(0, 300);
+        if (!name || !url) return null;
+        let id = String(item.id || '').trim().slice(0, 40);
+        if (!id) id = 'api_' + hashString(name + '|' + url + '|' + index);
+        if (seen.has(id)) id = id + '_' + index;
+        seen.add(id);
+        return {
+            id,
+            name,
+            url,
+            key: String(item.key || item.密钥 || '').trim().slice(0, 400),
+            model: String(item.model || item.模型 || '').trim().slice(0, 160)
+        };
+    }).filter(Boolean).slice(0, 20);
+}
+
 function normalizeSettings(raw) {
     const out = Object.assign({}, DEFAULT_SETTINGS, isPlainObject(raw) ? raw : {});
     out.version = 2;
@@ -529,12 +586,17 @@ function normalizeSettings(raw) {
     out.subApiKey = String(out.subApiKey || '').trim();
     out.subApiModel = String(out.subApiModel || '').trim();
     out.temperature = clamp(Number(out.temperature) || 0, 0, 2);
-    out.maxTokens = clamp(toInt(out.maxTokens, 1500), 200, 8000);
+    out.maxTokens = clamp(toInt(out.maxTokens, 2200), 200, 8000);
     out.debug = isTrue(out.debug);
     out.theme = THEMES[out.theme] ? out.theme : 'A';
-    ['injectEvents', 'injectNpc', 'injectRumors', 'injectLetters', 'injectForeshadow', 'injectRelations', 'injectTimeline', 'pregnancyModule', 'foreshadowAi', 'foreshadowUser'].forEach(key => {
+    ['injectEvents', 'injectNpc', 'injectRumors', 'injectLetters', 'injectForeshadow', 'injectRelations', 'injectTimeline', 'pregnancyModule', 'foreshadowAi', 'foreshadowUser', 'leadGroup'].forEach(key => {
         out[key] = out[key] !== false;
     });
+    out.ballSize = clamp(toInt(out.ballSize, 50), 36, 84);
+    out.ballImage = typeof out.ballImage === 'string' && /^data:image\//.test(out.ballImage) ? out.ballImage.slice(0, 2000000) : '';
+    out.apiProfiles = normalizeApiProfiles(out.apiProfiles);
+    out.apiProfileId = String(out.apiProfileId || '').trim();
+    if (out.apiProfileId && !out.apiProfiles.some(item => item.id === out.apiProfileId)) out.apiProfileId = '';
     out.relationView = out.relationView === 'graph' ? 'graph' : 'card';
     out.timelineRange = clamp(toInt(out.timelineRange, 20), 0, 9999);
     const pos = isPlainObject(out.ballPos) ? out.ballPos : {};
@@ -554,6 +616,10 @@ function getSettings() {
     } catch (e) { /* ignore */ }
     state.settings = normalizeSettings(raw);
     return state.settings;
+}
+
+function getBallSize() {
+    return clamp(toInt(getSettings().ballSize, 50), 36, 84);
 }
 
 function mergeSettingsPatch(base, patch) {
@@ -579,11 +645,28 @@ function saveSettings(patch) {
     }
 }
 
+const PRESET_REVISION = 2;
+const BUILTIN_PRESETS = ['精简', '正常', '详细'];
+
 function getPresets() {
     let custom = {};
     try {
         const vars = getVariables({ type: 'global' }) || {};
         custom = isPlainObject(vars.群像预设) ? vars.群像预设 : {};
+        // 旧版把内置三档也存进自定义，导致新提示词永远被旧文案覆盖。
+        // 升级到第 2 版时清掉内置档的旧覆盖，只保留用户自己另存的名字。
+        if (toInt(vars.群像预设版本, 0) !== PRESET_REVISION) {
+            const next = Object.assign({}, custom);
+            BUILTIN_PRESETS.forEach(name => { delete next[name]; });
+            custom = next;
+            try {
+                updateVariablesWith(v => {
+                    v.群像预设 = next;
+                    v.群像预设版本 = PRESET_REVISION;
+                    return v;
+                }, { type: 'global' });
+            } catch (e) { /* ignore */ }
+        }
     } catch (e) { /* ignore */ }
     const out = Object.assign({}, PRESET_DEFAULT);
     Object.entries(custom).forEach(([name, content]) => {
@@ -895,7 +978,10 @@ function dedupeForeshadow(list) {
             map.set(key, f);
             return;
         }
-        old.已回收 = old.已回收 || f.已回收;
+        if (f.已回收 && !old.已回收) {
+            old.已回收 = true;
+            old.回收回合 = f.回收回合 || old.回合 || 0;
+        }
         if (!old.来源 || old.来源 === '手动') old.来源 = f.来源 || old.来源;
         if (!old.回合 && f.回合) old.回合 = f.回合;
     });
@@ -918,7 +1004,10 @@ function mergeForeshadow(oldList, newList) {
             map.set(key, f);
             return;
         }
-        old.已回收 = old.已回收 || f.已回收;
+        if (f.已回收 && !old.已回收) {
+            old.已回收 = true;
+            old.回收回合 = f.回收回合 || 0;
+        }
         if (!old.来源 || old.来源 === '手动') old.来源 = f.来源 || old.来源;
         if (!old.回合 && f.回合) old.回合 = f.回合;
     });
@@ -957,7 +1046,7 @@ function derivePregnancies(npcState, list, round) {
         if (record) map.set(record.人物, record);
     });
     Object.entries(npcState || {}).forEach(([name, info]) => {
-        if (isBlacklisted(name) || !isPlainObject(info)) return;
+        if (isBlacklisted(name) || isLeadName(name) || !isPlainObject(info)) return;
         const text = [info.当前所做, info.心情, info.位置, info.身份].filter(Boolean).join(' ');
         const match = text.match(/孕\s*([0-9一二三四五六七八九十百零〇两]+)\s*月|有孕|怀孕|身怀六甲/);
         if (!match) return;
@@ -979,6 +1068,27 @@ function derivePregnancies(npcState, list, round) {
     return Array.from(map.values());
 }
 
+function recoverForeshadows(list, events, round) {
+    const completed = (Array.isArray(events) ? events : []).filter(event => getProgressNum(event) >= 100);
+    if (!completed.length) return list;
+    (Array.isArray(list) ? list : []).forEach(foreshadow => {
+        if (!foreshadow || foreshadow.已回收) return;
+        const content = String(foreshadow.内容 || '');
+        const hit = completed.some(event => {
+            const name = String(event.事件名 || '');
+            const text = String(event.内容 || '');
+            if (name && (content.includes(name) || name.includes(content.slice(0, Math.min(8, content.length))))) return true;
+            const head = text.slice(0, 16);
+            return !!head && (content.includes(head) || head.includes(content.slice(0, 12)));
+        });
+        if (hit) {
+            foreshadow.已回收 = true;
+            foreshadow.回收回合 = round;
+        }
+    });
+    return list;
+}
+
 function mergeGroupData(oldData, fresh) {
     const out = normalizeData(oldData || {});
     if (!hasContent(fresh)) return out;
@@ -997,6 +1107,7 @@ function mergeGroupData(oldData, fresh) {
                 const newAge = ageNumber(clean.年龄);
                 if (oldAge && newAge && newAge < oldAge) mergedInfo.年龄 = oldInfo.年龄;
             }
+            mergedInfo.更新回合 = round;
             out.NPC状态[name] = mergedInfo;
         });
     }
@@ -1041,6 +1152,12 @@ function mergeGroupData(oldData, fresh) {
         out.伏笔 = mergeForeshadow(out.伏笔, auto);
     }
 
+    (out.伏笔 || []).forEach(item => {
+        if (item.已回收 && !item.回收回合) item.回收回合 = round;
+    });
+    out.伏笔 = recoverForeshadows(out.伏笔, []
+        .concat(out.NPC事件 || [], out.国家事件 || [], out.邻国事件 || []), round);
+
     out.最后更新回合 = round;
     out.版本 = 2;
     return out;
@@ -1067,7 +1184,8 @@ function buildEventContext() {
             (Array.isArray(data[key]) ? data[key] : []).forEach(event => {
                 if (getProgressNum(event) >= 100) return;
                 const name = event.事件名 || String(event.内容 || '').slice(0, 10);
-                if (name) push(`[${key.replace('事件', '')}] ${name}（${getProgressNum(event)}%）`);
+                const domain = event.领域 ? '·' + event.领域 : '';
+                if (name) push(`[${key.replace('事件', '')}${domain}] ${name}（${getProgressNum(event)}%）`);
             });
         });
     }
@@ -1286,7 +1404,7 @@ async function generateSub(settings, options) {
         }
     } catch (e) { /* ignore */ }
 
-    const baselineText = JSON.stringify(baseline, null, 2).slice(0, 6000);
+    const baselineText = JSON.stringify(baseline, null, 2).slice(0, 10000);
     const prompt = wrapSubPrompt(core)
         + buildPregnancyPrompt()
         + `\n\n【当前群像状态】\n` + baselineText
@@ -1564,8 +1682,8 @@ const CSS = `
     position: absolute;
     right: 14px;
     top: 28%;
-    width: 50px;
-    height: 50px;
+    width: var(--lx-ball-size, 50px);
+    height: var(--lx-ball-size, 50px);
     border-radius: 50%;
     display: block;
     padding: 0;
@@ -1588,7 +1706,7 @@ const CSS = `
     z-index: 7;
     pointer-events: auto;
     outline: none;
-    transition: transform 0.18s ease, box-shadow 0.3s ease, opacity 0.18s ease;
+    transition: transform 0.18s ease, box-shadow 0.3s ease, opacity 0.18s ease, left 0.18s ease, top 0.18s ease;
     will-change: left, top, transform;
 }
 #lx-ball::before {
@@ -1612,7 +1730,7 @@ const CSS = `
 }
 .lx-ball-halo {
     position: absolute;
-    inset: -7px;
+    inset: calc(var(--lx-ball-size, 50px) * -0.14);
     border-radius: 50%;
     background: radial-gradient(circle, rgba(212,175,55,0.22), transparent 66%);
     filter: blur(6px);
@@ -1621,7 +1739,7 @@ const CSS = `
 }
 .lx-ball-ring {
     position: absolute;
-    inset: 5px;
+    inset: calc(var(--lx-ball-size, 50px) * 0.10);
     border-radius: 50%;
     background: repeating-conic-gradient(from 0deg, rgba(232,200,106,0.9) 0deg 1.3deg, transparent 1.3deg 30deg);
     -webkit-mask: radial-gradient(circle, transparent 59%, #000 60%, #000 69%, transparent 70%);
@@ -1632,7 +1750,7 @@ const CSS = `
 }
 .lx-ball-core {
     position: absolute;
-    inset: 12px;
+    inset: calc(var(--lx-ball-size, 50px) * 0.24);
     border-radius: 50%;
     border: 1px solid rgba(232,200,106,0.45);
     background: radial-gradient(circle at 36% 30%, #72522a, #2d1f12 56%, #120c07 100%);
@@ -1641,10 +1759,32 @@ const CSS = `
         inset 0 -4px 9px rgba(0,0,0,0.6);
     pointer-events: none;
 }
+.lx-ball-image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    display: none;
+    z-index: 1;
+    pointer-events: none;
+}
+#lx-ball.has-custom-image { background: #120c07; }
+#lx-ball.has-custom-image .lx-ball-image { display: block; }
+#lx-ball.has-custom-image .lx-ball-halo,
+#lx-ball.has-custom-image .lx-ball-ring,
+#lx-ball.has-custom-image .lx-ball-core,
+#lx-ball.has-custom-image .lx-ball-gem { display: none; }
+#lx-ball.has-custom-image::before,
+#lx-ball.has-custom-image::after { display: none; }
 .lx-ball-gem {
     position: absolute;
-    width: 9px;
-    height: 9px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: calc(var(--lx-ball-size, 50px) * 0.18);
+    height: calc(var(--lx-ball-size, 50px) * 0.18);
     border-radius: 50%;
     background: radial-gradient(circle at 35% 30%, #fff2c4, #d4af37 46%, #8a5a1e 100%);
     box-shadow: 0 0 8px rgba(232,200,106,0.8), 0 0 18px rgba(212,175,55,0.35);
@@ -1882,7 +2022,34 @@ const CSS = `
     margin-bottom: 9px;
     border-radius: 3px;
 }
-.lx-npc-name {
+.lx-npc-group-title {
+    margin: 10px 0 6px;
+    padding: 4px 8px;
+    border: 1px solid var(--lx-border);
+    border-radius: 2px;
+    background: var(--lx-event-bg);
+    color: var(--lx-gold);
+    font-size: 11px;
+    letter-spacing: 2px;
+}
+.lx-npc-group-title:first-child { margin-top: 0; }
+.lx-npc-subtitle {
+    margin: 8px 0 5px;
+    color: var(--lx-dim);
+    font-size: 10.5px;
+    letter-spacing: 1px;
+}
+.lx-npc-subtitle.current { color: var(--lx-gold); }
+.lx-npc-card.current { border-color: var(--lx-gold); }
+.lx-npc-now {
+    margin-left: 6px;
+    padding: 0 4px;
+    border: 1px solid var(--lx-gold);
+    color: var(--lx-gold);
+    font-size: 9px;
+    letter-spacing: 0;
+    vertical-align: middle;
+}.lx-npc-name {
     color: var(--lx-gold);
     font-size: 14px;
     font-weight: 700;
@@ -1914,7 +2081,15 @@ const CSS = `
     word-break: break-word;
 }
 .lx-event .lx-role { color: var(--lx-gold); font-weight: 700; margin-right: 5px; }
-.lx-event-title {
+.lx-event-domain {
+    margin-left: 5px;
+    padding: 0 4px;
+    border: 1px solid var(--lx-border);
+    color: var(--lx-dim);
+    font-size: 9px;
+    letter-spacing: 0;
+    font-weight: 400;
+}.lx-event-title {
     color: var(--lx-gold);
     font-size: 12px;
     letter-spacing: 1px;
@@ -2233,7 +2408,12 @@ const CSS = `
 }
 
 /* 伏笔 */
-.lx-foreshadow-item {
+.lx-fp-summary {
+    margin-bottom: 7px;
+    color: var(--lx-dim);
+    font-size: 10.5px;
+    letter-spacing: 0.5px;
+}.lx-foreshadow-item {
     padding: 9px 11px;
     border-left: 3px solid var(--lx-gold);
     background: var(--lx-card-bg);
@@ -2375,7 +2555,34 @@ const CSS = `
     background: var(--lx-card-bg);
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.25);
 }
-.lx-npc-name {
+.lx-npc-group-title {
+    margin: 10px 0 6px;
+    padding: 4px 8px;
+    border: 1px solid var(--lx-border);
+    border-radius: 2px;
+    background: var(--lx-event-bg);
+    color: var(--lx-gold);
+    font-size: 11px;
+    letter-spacing: 2px;
+}
+.lx-npc-group-title:first-child { margin-top: 0; }
+.lx-npc-subtitle {
+    margin: 8px 0 5px;
+    color: var(--lx-dim);
+    font-size: 10.5px;
+    letter-spacing: 1px;
+}
+.lx-npc-subtitle.current { color: var(--lx-gold); }
+.lx-npc-card.current { border-color: var(--lx-gold); }
+.lx-npc-now {
+    margin-left: 6px;
+    padding: 0 4px;
+    border: 1px solid var(--lx-gold);
+    color: var(--lx-gold);
+    font-size: 9px;
+    letter-spacing: 0;
+    vertical-align: middle;
+}.lx-npc-name {
     display: inline-block;
     padding: 1px 8px;
     margin-bottom: 7px;
@@ -2402,7 +2609,15 @@ const CSS = `
     padding: 9px 11px;
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.22);
 }
-.lx-event-title {
+.lx-event-domain {
+    margin-left: 5px;
+    padding: 0 4px;
+    border: 1px solid var(--lx-border);
+    color: var(--lx-dim);
+    font-size: 9px;
+    letter-spacing: 0;
+    font-weight: 400;
+}.lx-event-title {
     display: inline-block;
     padding: 0 6px;
     border: 1px solid var(--lx-border);
@@ -2458,7 +2673,7 @@ const CSS = `
     padding: 0;
     gap: 0;
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     background: var(--lx-event-bg);
     border-bottom: 1px solid var(--lx-border);
 }
@@ -2570,6 +2785,7 @@ const CSS = `
 const SHELL_HTML = `
 <div id="lx-root">
     <div id="lx-ball" role="button" tabindex="0" aria-label="打开群像志">
+        <img class="lx-ball-image" id="lx-ball-image" alt="">
         <span class="lx-ball-halo"></span>
         <span class="lx-ball-ring"></span>
         <span class="lx-ball-core"></span>
@@ -2682,6 +2898,27 @@ function applyTheme() {
         '--lx-shadow': theme.shadow
     };
     Object.entries(map).forEach(([key, value]) => state.root.style.setProperty(key, value));
+    applyBallAppearance();
+}
+
+function applyBallAppearance() {
+    const s = getSettings();
+    if (state.root) state.root.style.setProperty('--lx-ball-size', getBallSize() + 'px');
+    const ball = state.refs.ball;
+    if (!ball) return;
+    const img = ball.querySelector('#lx-ball-image');
+    const hasImage = !!s.ballImage;
+    ball.classList.toggle('has-custom-image', hasImage);
+    if (img) {
+        if (hasImage) {
+            img.src = s.ballImage;
+            img.style.display = 'block';
+        } else {
+            img.removeAttribute('src');
+            img.style.display = 'none';
+        }
+    }
+    positionBall();
 }
 
 function viewportSize() {
@@ -2737,8 +2974,9 @@ function positionBall() {
     const pos = getSettings().ballPos;
     const minLeft = vp.offsetLeft + BALL_MARGIN;
     const minTop = vp.offsetTop + BALL_MARGIN;
-    const maxLeft = Math.max(minLeft, vp.offsetLeft + vp.width - BALL_SIZE - BALL_MARGIN);
-    const maxTop = Math.max(minTop, vp.offsetTop + vp.height - BALL_SIZE - BALL_MARGIN);
+    const size = getBallSize();
+    const maxLeft = Math.max(minLeft, vp.offsetLeft + vp.width - size - BALL_MARGIN);
+    const maxTop = Math.max(minTop, vp.offsetTop + vp.height - size - BALL_MARGIN);
     let left;
     let top;
     if (pos.x === null) {
@@ -2757,16 +2995,37 @@ function positionBall() {
     state.ball.currentTop = top;
 }
 
+function snapBallToEdge() {
+    const ball = state.refs.ball;
+    if (!ball) return;
+    const vp = viewportSize();
+    const size = getBallSize();
+    const left = parseFloat(ball.style.left) || 0;
+    const top = parseFloat(ball.style.top) || 0;
+    const minLeft = vp.offsetLeft + BALL_MARGIN;
+    const maxLeft = Math.max(minLeft, vp.offsetLeft + vp.width - size - BALL_MARGIN);
+    const near = vp.width * 0.24;
+    let target = left;
+    if (left - minLeft <= near) target = minLeft;
+    else if (maxLeft - left <= near) target = maxLeft;
+    if (Math.abs(target - left) > 1) {
+        ball.classList.add('snapping');
+        setBallPosition(target, top);
+        setTimeout(() => ball.classList.remove('snapping'), 220);
+    }
+}
+
 function saveBallPosition() {
     const ball = state.refs.ball;
     if (!ball) return;
     const vp = viewportSize();
+    const size = getBallSize();
     const left = parseFloat(ball.style.left) || 0;
     const top = parseFloat(ball.style.top) || 0;
     const minLeft = vp.offsetLeft + BALL_MARGIN;
     const minTop = vp.offsetTop + BALL_MARGIN;
-    const maxLeft = Math.max(minLeft, vp.offsetLeft + vp.width - BALL_SIZE - BALL_MARGIN);
-    const maxTop = Math.max(minTop, vp.offsetTop + vp.height - BALL_SIZE - BALL_MARGIN);
+    const maxLeft = Math.max(minLeft, vp.offsetLeft + vp.width - size - BALL_MARGIN);
+    const maxTop = Math.max(minTop, vp.offsetTop + vp.height - size - BALL_MARGIN);
     const x = maxLeft > minLeft ? clamp((left - minLeft) / (maxLeft - minLeft), 0, 1) : null;
     const y = maxTop > minTop ? clamp((top - minTop) / (maxTop - minTop), 0, 1) : 0.28;
     saveSettings({ ballPos: { x, y } });
@@ -2809,6 +3068,7 @@ function emptyText(defaultText) {
 
 function renderNpc(data) {
     const year = data.纪年 && data.纪年.年 ? `<div class="lx-year">纪年：${escapeHtml(data.纪年.年号 || '')}${data.纪年.年}年</div>` : '';
+    const maxRound = toInt(data.最后更新回合, 0);
     const entries = Object.entries(data.NPC状态 || {})
         .filter(([name]) => !isBlacklisted(name))
         .filter(([name, info]) => textMatch(name, info.身份, info.年龄, info.位置, info.心情, info.当前所做));
@@ -2816,7 +3076,9 @@ function renderNpc(data) {
         setPanel('NPC状态', year + emptyText('尚无记录'));
         return;
     }
-    const html = entries.map(([name, info]) => {
+
+    const card = ([name, info]) => {
+        const current = maxRound > 0 && toInt(info.更新回合, 0) === maxRound;
         const meta = [
             '身份：' + (info.身份 || '不详'),
             '年龄：' + (info.年龄 || '不详'),
@@ -2824,18 +3086,46 @@ function renderNpc(data) {
             info.心情 && '心情：' + info.心情,
             info.当前所做 && '所事：' + info.当前所做
         ].filter(Boolean).map(text => `<span>${escapeHtml(text)}</span>`).join('');
-        return `<div class="lx-npc-card">
-            <div class="lx-npc-name">${escapeHtml(name)}</div>
+        return `<div class="lx-npc-card${current ? ' current' : ''}">
+            <div class="lx-npc-name">${escapeHtml(name)}${current ? '<span class="lx-npc-now">本轮</span>' : ''}</div>
             <div class="lx-npc-meta">${meta}</div>
         </div>`;
-    }).join('');
+    };
+
+    const group = (title, list) => {
+        if (!list.length) return '';
+        const current = list.filter(([, info]) => maxRound > 0 && toInt(info.更新回合, 0) === maxRound);
+        const older = list.filter(([, info]) => !(maxRound > 0 && toInt(info.更新回合, 0) === maxRound));
+        let html = `<div class="lx-npc-group-title">${escapeHtml(title)}</div>`;
+        if (current.length) {
+            html += `<div class="lx-npc-subtitle current">本轮更新 · ${current.length}</div>`;
+            html += current.map(card).join('');
+        }
+        if (older.length) {
+            html += `<div class="lx-npc-subtitle">上轮及更早 · ${older.length}</div>`;
+            html += older.map(card).join('');
+        }
+        return html;
+    };
+
+    const settings = getSettings();
+    let html = '';
+    if (settings.leadGroup) {
+        const leads = entries.filter(([name]) => isLeadName(name));
+        const others = entries.filter(([name]) => !isLeadName(name));
+        html += group('主线人物 · 李承璟 / ' + getUserDisplayName(), leads);
+        html += group('群像人物', others);
+    } else {
+        html += group('全部人物', entries);
+    }
     setPanel('NPC状态', year + html);
 }
 
 function renderEventItem(event, roleField, isDone) {
     const role = roleField && event[roleField]
         ? `<span class="lx-role">${escapeHtml(event[roleField])}</span>` : '';
-    const title = event.事件名 ? `<div class="lx-event-title">${escapeHtml(event.事件名)}</div>` : '';
+    const domain = event.领域 ? `<span class="lx-event-domain">${escapeHtml(event.领域)}</span>` : '';
+    const title = event.事件名 ? `<div class="lx-event-title">${escapeHtml(event.事件名)}${domain}</div>` : '';
     const progress = getProgressNum(event);
     return `<div class="lx-event ${isDone ? 'done' : ''}">
         ${title}
@@ -3048,26 +3338,36 @@ function renderForeshadow(list) {
             : ''));
         return;
     }
-    rows.sort((a, b) => {
-        if (a.item.已回收 !== b.item.已回收) return a.item.已回收 ? 1 : -1;
-        return (b.item.回合 || 0) - (a.item.回合 || 0);
-    });
-    const html = rows.map(({ item, index }) => {
-        const cls = item.已回收 ? 'lx-foreshadow-item recovered' : 'lx-foreshadow-item';
+    rows.sort((a, b) => (b.item.回合 || 0) - (a.item.回合 || 0));
+    const pending = rows.filter(({ item }) => !item.已回收);
+    const recovered = rows.filter(({ item }) => item.已回收);
+    const itemHtml = ({ item, index }) => {
         const button = settings.foreshadowUser
-            ? `<button type="button" class="lx-mini-btn" data-action="fp-toggle" data-idx="${index}">${item.已回收 ? '已回收' : '标记回收'}</button>`
+            ? `<button type="button" class="lx-mini-btn" data-action="fp-toggle" data-idx="${index}">${item.已回收 ? '撤回回收' : '标记回收'}</button>`
             : `<span>${item.已回收 ? '已回收' : '未回收'}</span>`;
         const roundLabel = item.回合 ? `第 ${item.回合} 回` : '早期';
-        return `<div class="${cls}">
+        const recoveredLabel = item.回收回合 ? ` · 第 ${item.回收回合} 回收` : '';
+        return `<div class="lx-foreshadow-item ${item.已回收 ? 'recovered' : ''}">
             <div class="lx-foreshadow-content">${escapeHtml(item.内容 || '')}</div>
             <div class="lx-foreshadow-meta">
-                <span>${roundLabel} · ${escapeHtml(item.来源 || '手动')}</span>
+                <span>${roundLabel} · ${escapeHtml(item.来源 || '手动')}${recoveredLabel}</span>
                 ${button}
             </div>
         </div>`;
-    }).join('');
+    };
+    let html = `<div class="lx-fp-summary">未回收 ${pending.length} 条 · 已回收 ${recovered.length} 条</div>`;
+    if (pending.length) {
+        html += pending.map(itemHtml).join('');
+    } else {
+        html += '<div class="lx-empty" style="padding:14px 0;">没有未回收的伏笔</div>';
+    }
+    if (recovered.length) {
+        html += `<details class="lx-completed"><summary><span>已回收 (${recovered.length})</span><span>点击展开</span></summary>
+            <div class="lx-completed-body">${recovered.map(itemHtml).join('')}</div>
+        </details>`;
+    }
     setPanel('伏笔', html + (settings.foreshadowUser
-        ? '<div style="margin-top:10px;"><button type="button" class="lx-mini-btn" data-action="fp-add">+ 添加伏笔</button></div>'
+        ? '<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;"><button type="button" class="lx-mini-btn" data-action="fp-add">+ 添加伏笔</button><button type="button" class="lx-mini-btn" data-action="fp-auto">回收已完成事件相关</button></div>'
         : ''));
 }
 
@@ -3180,6 +3480,9 @@ function buildSettingsHTML() {
     const presetOptions = presetNames.map(name =>
         `<option value="${escapeAttr(name)}" ${name === activePreset ? 'selected' : ''}>${escapeHtml(name)}</option>`
     ).join('');
+    const apiProfileOptions = (s.apiProfiles || []).map(item =>
+        `<option value="${escapeAttr(item.id)}" ${item.id === s.apiProfileId ? 'selected' : ''}>${escapeHtml(item.name)} · ${escapeHtml(item.model || '未填模型')}</option>`
+    ).join('');
     const themeItems = Object.keys(THEMES).map(key => `
         <div class="lx-theme-item ${s.theme === key ? 'active' : ''}" data-action="theme" data-theme="${key}">
             <div class="lx-theme-swatch" style="background:${THEMES[key].solid};border:2px solid ${THEMES[key].gold};"></div>
@@ -3194,6 +3497,7 @@ function buildSettingsHTML() {
     </div>
     <div class="lx-settings-tabs" role="tablist">
         <div class="lx-settings-tab ${state.ui.settingsTab === 'basic' ? 'active' : ''}" role="tab" data-stab="basic">基本设置</div>
+        <div class="lx-settings-tab ${state.ui.settingsTab === 'api' ? 'active' : ''}" role="tab" data-stab="api">API</div>
         <div class="lx-settings-tab ${state.ui.settingsTab === 'appearance' ? 'active' : ''}" role="tab" data-stab="appearance">外观</div>
         <div class="lx-settings-tab ${state.ui.settingsTab === 'prompt' ? 'active' : ''}" role="tab" data-stab="prompt">提示词</div>
     </div>
@@ -3212,7 +3516,7 @@ function buildSettingsHTML() {
                     ${radioRow('lx-mode', 'main', s.mode, '主 API')}
                     ${radioRow('lx-mode', 'sub', s.mode, '副 API')}
                 </div>
-                <div class="lx-field-hint">两种模式都不改正文、不写标签。主 API：用酒馆当前 API/模型再发一次静默请求（会额外计费）；副 API：用下面单独填写的地址/模型。想省钱可把触发时机改成“手动”。</div>
+                <div class="lx-field-hint">两种模式都不改正文、不写标签。主 API：用酒馆当前 API/模型再发一次静默请求（会额外计费）；副 API：在「API」页填写地址/模型，可保存多套并切换。想省钱可把触发时机改成“手动”。</div>
             </div>
             <div class="lx-field">
                 <label class="lx-field-label">触发时机（副 API 有效）</label>
@@ -3221,27 +3525,7 @@ function buildSettingsHTML() {
                     ${radioRow('lx-trigger', 'manual', s.trigger, '手动')}
                 </div>
             </div>
-            <div class="lx-field">
-                <label class="lx-field-label">副 API 地址</label>
-                <input class="lx-input" id="lx-api-url" type="text" placeholder="https://api.example.com/v1" value="${escapeAttr(s.subApiUrl)}">
-                <div class="lx-field-hint">留空则使用酒馆当前 API；填写后仅群像生成走这个地址。</div>
-            </div>
-            <div class="lx-field">
-                <label class="lx-field-label">副 API 密钥</label>
-                <div class="lx-inline">
-                    <input class="lx-input" id="lx-api-key" type="password" placeholder="sk-..." value="${escapeAttr(s.subApiKey)}">
-                    <button type="button" class="lx-mini-btn" data-action="toggle-key">显示</button>
-                </div>
-                <div class="lx-field-hint">保存在全局变量里，只存在本机；请勿在公共设备上填写。</div>
-            </div>
-            <div class="lx-field">
-                <label class="lx-field-label">副 API 模型</label>
-                <div class="lx-inline">
-                    <input class="lx-input" id="lx-api-model" type="text" placeholder="可手填或拉取" value="${escapeAttr(s.subApiModel)}">
-                    <button type="button" class="lx-mini-btn" data-action="fetch-models">拉取</button>
-                </div>
-                <select class="lx-select" id="lx-model-list" style="margin-top:6px;display:none;"></select>
-            </div>
+
             <div class="lx-field">
                 <label class="lx-field-label">温度</label>
                 <div class="lx-range-row">
@@ -3262,6 +3546,13 @@ function buildSettingsHTML() {
                     ${radioRow('lx-debug', 'true', s.debug ? 'true' : 'false', '开启')}
                     ${radioRow('lx-debug', 'false', s.debug ? 'true' : 'false', '关闭')}
                 </div>
+            </div>
+            <div class="lx-field">
+                <label class="lx-field-label">主线人物分组</label>
+                <div class="lx-radio-group">
+                    ${checkRow('lx-lead-group', s.leadGroup, '李承璟 / {{user}} 单独分组')}
+                </div>
+                <div class="lx-field-hint">开启后 NPC 状态页先显示主线人物，再显示群像人物；关闭则全部混在一起。</div>
             </div>
             <div class="lx-field">
                 <label class="lx-field-label">后妃孕事模块</label>
@@ -3297,10 +3588,68 @@ function buildSettingsHTML() {
             </details>
         </div>
 
+        <div class="lx-settings-panel ${state.ui.settingsTab === 'api' ? 'active' : ''}" data-spanel="api">
+            <div class="lx-field">
+                <label class="lx-field-label">已保存的 API 配置</label>
+                <div class="lx-inline">
+                    <select class="lx-select" id="lx-api-profile">
+                        <option value="">当前配置（未保存）</option>
+                        ${apiProfileOptions}
+                    </select>
+                    <button type="button" class="lx-mini-btn" data-action="api-switch">切换</button>
+                    <button type="button" class="lx-mini-btn" data-action="api-del">删除</button>
+                </div>
+                <div class="lx-inline" style="margin-top:6px;">
+                    <input class="lx-input" id="lx-api-profile-name" type="text" placeholder="给当前 API 起个名字">
+                    <button type="button" class="lx-mini-btn" data-action="api-save">保存当前</button>
+                </div>
+                <div class="lx-field-hint">保存会记住地址、密钥、模型；之后可一键切换。只存本机全局变量。</div>
+            </div>
+            <div class="lx-field">
+                <label class="lx-field-label">副 API 地址</label>
+                <input class="lx-input" id="lx-api-url" type="text" placeholder="https://api.example.com/v1" value="${escapeAttr(s.subApiUrl)}">
+                <div class="lx-field-hint">留空则使用酒馆当前 API；填写后仅群像生成走这个地址。</div>
+            </div>
+            <div class="lx-field">
+                <label class="lx-field-label">副 API 密钥</label>
+                <div class="lx-inline">
+                    <input class="lx-input" id="lx-api-key" type="password" placeholder="sk-..." value="${escapeAttr(s.subApiKey)}">
+                    <button type="button" class="lx-mini-btn" data-action="toggle-key">显示</button>
+                </div>
+                <div class="lx-field-hint">保存在全局变量里，只存在本机；请勿在公共设备上填写。</div>
+            </div>
+            <div class="lx-field">
+                <label class="lx-field-label">副 API 模型</label>
+                <div class="lx-inline">
+                    <input class="lx-input" id="lx-api-model" type="text" placeholder="可手填或拉取" value="${escapeAttr(s.subApiModel)}">
+                    <button type="button" class="lx-mini-btn" data-action="fetch-models">拉取</button>
+                </div>
+                <select class="lx-select" id="lx-model-list" style="margin-top:6px;display:none;"></select>
+            </div>
+        </div>
+
         <div class="lx-settings-panel ${state.ui.settingsTab === 'appearance' ? 'active' : ''}" data-spanel="appearance">
             <div class="lx-field">
                 <label class="lx-field-label">配色方案</label>
                 <div class="lx-theme-grid">${themeItems}</div>
+            </div>
+            <div class="lx-field">
+                <label class="lx-field-label">悬浮球大小</label>
+                <div class="lx-range-row">
+                    <input class="lx-range" id="lx-ball-size" type="range" min="36" max="84" step="1" value="${s.ballSize}">
+                    <span class="lx-range-val" id="lx-ball-size-val">${s.ballSize}px</span>
+                </div>
+                <div class="lx-field-hint">手机端拖动到左右边缘会自动吸附；大小立即预览。</div>
+            </div>
+            <div class="lx-field">
+                <label class="lx-field-label">悬浮球图片</label>
+                <div class="lx-inline">
+                    <label class="lx-mini-btn" style="cursor:pointer;">上传图片
+                        <input type="file" id="lx-ball-file" accept="image/*" style="display:none;">
+                    </label>
+                    <button type="button" class="lx-mini-btn" data-action="ball-image-reset">恢复默认</button>
+                </div>
+                <div class="lx-field-hint">支持 PNG/JPG/GIF/WebP，建议正方形；图片只保存在本机。</div>
             </div>
             <div class="lx-field">
                 <label class="lx-field-label">关系图样式</label>
@@ -3479,7 +3828,7 @@ function saveSettingsFromForm() {
         subApiKey: val('#lx-api-key').trim(),
         subApiModel: val('#lx-api-model').trim(),
         temperature: clamp(Number(val('#lx-temp')) || 0, 0, 2),
-        maxTokens: clamp(toInt(val('#lx-maxtok'), 1500), 200, 8000),
+        maxTokens: clamp(toInt(val('#lx-maxtok'), 2200), 200, 8000),
         debug: radio('input[name="lx-debug"]') === 'true',
         injectEvents: checked('#lx-inj-events'),
         injectNpc: checked('#lx-inj-npc'),
@@ -3488,6 +3837,8 @@ function saveSettingsFromForm() {
         injectForeshadow: checked('#lx-inj-fp'),
         injectRelations: checked('#lx-inj-rel'),
         injectTimeline: checked('#lx-inj-timeline'),
+        leadGroup: checked('#lx-lead-group'),
+        ballSize: clamp(toInt(val('#lx-ball-size'), 50), 36, 84),
         pregnancyModule: checked('#lx-preg-module'),
         relationView: radio('input[name="lx-relview"]') === 'graph' ? 'graph' : 'card',
         timelineRange: clamp(toInt(val('#lx-timeline-range'), 20), 0, 9999),
@@ -3670,11 +4021,29 @@ async function toggleForeshadow(idx) {
     const list = Array.isArray(data.伏笔) ? data.伏笔 : [];
     if (!list[idx]) return;
     list[idx].已回收 = !list[idx].已回收;
+    list[idx].回收回合 = list[idx].已回收 ? Math.max(1, toInt(data.最后更新回合, 1)) : 0;
     data.伏笔 = list;
     const tid = getLatestAssistantId();
     if (tid < 0) return;
     await attachGroupData(tid, data);
     renderAll();
+}
+
+async function autoRecoverForeshadow() {
+    const data = getGroupData() || normalizeData({});
+    const before = (data.伏笔 || []).filter(item => !item.已回收).length;
+    data.伏笔 = recoverForeshadows(
+        Array.isArray(data.伏笔) ? data.伏笔 : [],
+        []
+            .concat(data.NPC事件 || [], data.国家事件 || [], data.邻国事件 || []),
+        Math.max(1, toInt(data.最后更新回合, 1))
+    );
+    const after = (data.伏笔 || []).filter(item => !item.已回收).length;
+    const tid = getLatestAssistantId();
+    if (tid < 0) return;
+    await attachGroupData(tid, data);
+    renderAll();
+    toast(after === before ? 'info' : 'success', after === before ? '没有匹配到已完成事件' : `已回收 ${before - after} 条`);
 }
 
 async function addForeshadow() {
@@ -3750,7 +4119,9 @@ function resetAllSettings() {
     const reset = normalizeSettings(Object.assign({}, DEFAULT_SETTINGS, {
         subApiUrl: s.subApiUrl,
         subApiKey: s.subApiKey,
-        subApiModel: s.subApiModel
+        subApiModel: s.subApiModel,
+        apiProfiles: s.apiProfiles,
+        apiProfileId: s.apiProfileId
     }));
     state.settings = reset;
     state.searchQuery = '';
@@ -3771,6 +4142,71 @@ function resetAllSettings() {
     applyTheme();
     renderAll();
     toast('success', '已重置；API 配置保留');
+}
+
+function readApiForm() {
+    const root = state.refs.settings;
+    if (!root) return { url: '', key: '', model: '' };
+    const val = selector => {
+        const el = root.querySelector(selector);
+        return el ? el.value.trim() : '';
+    };
+    return { url: val('#lx-api-url'), key: val('#lx-api-key'), model: val('#lx-api-model') };
+}
+
+function saveApiProfile() {
+    const root = state.refs.settings;
+    if (!root) return;
+    const data = readApiForm();
+    if (!data.url || !data.model) { toast('warning', '至少填写地址和模型'); return; }
+    const nameInput = root.querySelector('#lx-api-profile-name');
+    const name = (nameInput && nameInput.value.trim()) || ask('给这套 API 起个名字：');
+    if (!name || !name.trim()) return;
+    const s = getSettings();
+    const profiles = (s.apiProfiles || []).slice();
+    const existing = profiles.find(item => item.name === name.trim());
+    const id = existing ? existing.id : 'api_' + hashString(name.trim() + '|' + data.url + '|' + Date.now());
+    const record = { id, name: name.trim().slice(0, 30), url: data.url, key: data.key, model: data.model };
+    if (existing) Object.assign(existing, record);
+    else profiles.push(record);
+    saveSettings({ mode: 'sub', apiProfiles: profiles, apiProfileId: id, subApiUrl: data.url, subApiKey: data.key, subApiModel: data.model });
+    openSettings();
+    toast('success', 'API 配置已保存');
+}
+
+function switchApiProfile() {
+    const root = state.refs.settings;
+    if (!root) return;
+    const select = root.querySelector('#lx-api-profile');
+    const id = select ? select.value : '';
+    const profile = (getSettings().apiProfiles || []).find(item => item.id === id);
+    if (!profile) { toast('warning', '先选择一个已保存的配置'); return; }
+    saveSettings({
+        mode: 'sub',
+        apiProfileId: profile.id,
+        subApiUrl: profile.url,
+        subApiKey: profile.key,
+        subApiModel: profile.model
+    });
+    openSettings();
+    toast('success', '已切换：' + profile.name);
+}
+
+function deleteApiProfile() {
+    const root = state.refs.settings;
+    if (!root) return;
+    const select = root.querySelector('#lx-api-profile');
+    const id = select ? select.value : '';
+    const s = getSettings();
+    const profile = (s.apiProfiles || []).find(item => item.id === id);
+    if (!profile) { toast('warning', '先选择一个已保存的配置'); return; }
+    if (!askConfirm(`删除 API 配置“${profile.name}”？`)) return;
+    saveSettings({
+        apiProfiles: (s.apiProfiles || []).filter(item => item.id !== id),
+        apiProfileId: s.apiProfileId === id ? '' : s.apiProfileId
+    });
+    openSettings();
+    toast('success', '已删除');
 }
 
 /* ------------------------------------------------------------------ */
@@ -3830,6 +4266,20 @@ async function handleAction(action, element) {
         }
         case 'fetch-models':
             await fetchModelsFromForm();
+            return;
+        case 'api-save':
+            saveApiProfile();
+            return;
+        case 'api-switch':
+            switchApiProfile();
+            return;
+        case 'api-del':
+            deleteApiProfile();
+            return;
+        case 'ball-image-reset':
+            saveSettings({ ballImage: '' });
+            applyBallAppearance();
+            toast('success', '已恢复默认悬浮球');
             return;
         case 'preset-save': {
             const content = state.refs.settings.querySelector('#lx-preset-content').value;
@@ -3895,6 +4345,9 @@ async function handleAction(action, element) {
         case 'fp-add':
             await addForeshadow();
             return;
+        case 'fp-auto':
+            await autoRecoverForeshadow();
+            return;
         case 'preg-edit':
             await editPregnancy(Number(element.dataset.idx));
             return;
@@ -3958,6 +4411,22 @@ function onChange(event) {
         const input = state.refs.settings.querySelector('#lx-api-model');
         if (input) input.value = target.value;
     }
+    if (target.id === 'lx-ball-file') {
+        const file = target.files && target.files[0];
+        if (!file) return;
+        if (!/^image\//.test(file.type)) { toast('warning', '请选择图片文件'); return; }
+        if (file.size > 800 * 1024) { toast('warning', '图片太大，请小于 800KB'); return; }
+        const Reader = (state.win && state.win.FileReader) || FileReader;
+        const reader = new Reader();
+        reader.onload = () => {
+            const result = String(reader.result || '');
+            if (!/^data:image\//.test(result)) return;
+            saveSettings({ ballImage: result });
+            applyBallAppearance();
+            toast('success', '悬浮球图片已更新');
+        };
+        reader.readAsDataURL(file);
+    }
 }
 
 function onInput(event) {
@@ -3976,6 +4445,12 @@ function onInput(event) {
     } else if (target.id === 'lx-maxtok') {
         const label = state.refs.settings.querySelector('#lx-maxtok-val');
         if (label) label.textContent = target.value;
+    } else if (target.id === 'lx-ball-size') {
+        const value = clamp(toInt(target.value, 50), 36, 84);
+        const label = state.refs.settings.querySelector('#lx-ball-size-val');
+        if (label) label.textContent = value + 'px';
+        saveSettings({ ballSize: value });
+        applyBallAppearance();
     }
 }
 
@@ -4015,10 +4490,11 @@ function setBallPosition(left, top) {
     const ball = state.refs.ball;
     if (!ball) return;
     const vp = viewportSize();
+    const size = getBallSize();
     const minLeft = vp.offsetLeft + BALL_MARGIN;
     const minTop = vp.offsetTop + BALL_MARGIN;
-    const maxLeft = Math.max(minLeft, vp.offsetLeft + vp.width - BALL_SIZE - BALL_MARGIN);
-    const maxTop = Math.max(minTop, vp.offsetTop + vp.height - BALL_SIZE - BALL_MARGIN);
+    const maxLeft = Math.max(minLeft, vp.offsetLeft + vp.width - size - BALL_MARGIN);
+    const maxTop = Math.max(minTop, vp.offsetTop + vp.height - size - BALL_MARGIN);
     ball.style.left = Math.round(clamp(left, minLeft, maxLeft)) + 'px';
     ball.style.top = Math.round(clamp(top, minTop, maxTop)) + 'px';
     ball.style.right = 'auto';
@@ -4066,6 +4542,7 @@ function finishBallDrag(event) {
         try { ball.releasePointerCapture(state.ball.pointerId); } catch (e) { /* ignore */ }
     }
     if (state.ball.dragging) {
+        snapBallToEdge();
         saveBallPosition();
         state.ball.suppressClick = true;
         setTimeout(() => { state.ball.suppressClick = false; }, 450);
@@ -4123,6 +4600,7 @@ function bindFallbackTouchDrag(ball) {
     const end = () => {
         ball.classList.remove('dragging');
         if (dragging) {
+            snapBallToEdge();
             saveBallPosition();
             state.ball.suppressClick = true;
             setTimeout(() => { state.ball.suppressClick = false; }, 450);
