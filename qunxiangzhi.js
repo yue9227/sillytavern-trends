@@ -1,4 +1,4 @@
-const VERSION = '0.0.7';
+const VERSION = '0.0.8';
 let userNamesCache = { time: 0, names: [] };
 const HOST_ID = 'lx-group-host';
 const LEGACY_IDS = ['lx-ball', 'lx-panel', 'lx-mask', 'lx-settings', 'lx-group-style'];
@@ -2083,7 +2083,8 @@ async function handleAiMessage(messageId, type) {
     await advanceYearFromMessage(messageId, msg.message);
 
     const fingerprint = messageId + ':' + hashString(msg.message || '');
-    if (state.processed.has(fingerprint)) return;
+    // 重roll 后正文可能先被读到旧文本；不能再被上一次生成留下的 fingerprint 拦住。
+    if (type !== 'swipe' && !recentSwipe && state.processed.has(fingerprint)) return;
     markProcessed(fingerprint);
 
     let fresh = null;
