@@ -1,4 +1,4 @@
-const VERSION = '0.1.0';
+const VERSION = '0.1.1';
 let userNamesCache = { time: 0, names: [] };
 const HOST_ID = 'lx-group-host';
 const LEGACY_IDS = ['lx-ball', 'lx-panel', 'lx-mask', 'lx-settings', 'lx-group-style'];
@@ -83,14 +83,19 @@ const DEFAULT_SETTINGS = {
     injectForeshadow: true,
     injectRelations: true,
     injectTimeline: true,
+    injectPregnancy: true,
+    injectHeir: true,
+    injectCourt: true,
+    injectMedical: true,
+    injectSecrets: true,
     pregnancyModule: false,
     heirModule: false,
-    memorialModule: true,
-    courtModule: true,
-    medicalModule: true,
-    secretModule: true,
+    memorialModule: false,
+    courtModule: false,
+    medicalModule: false,
+    secretModule: false,
     calendarModule: true,
-    struggleModule: true,
+    struggleModule: false,
     relationView: 'card',
     timelineRange: 20,
     foreshadowAi: true,
@@ -137,7 +142,7 @@ const PRESET_DEFAULT = {
 
 【朝堂门阀字段】派系：派系名、领袖、成员、主张、资源、目标、敌对、进度、备注。家族：家族、家主、成员、姻亲、世仇、产业、门生、立场、备注。
 【医疗健康字段】只有正文出现伤病/中毒/脉案/用药/太医诊治时才生成；没有就空数组。字段：人物、日期、症状、诊断、方子、太医、忌口、状态、备注。
-【节庆礼仪字段】已合并进时令：节日、礼仪、主礼、地点、座次、禁忌、节目。
+【节庆礼仪字段】已合并进时令：节日、礼仪、主礼、地点、座次、禁忌、节目。节日必须按年月日推算，写最近的节日，不能写“未记”。
 【孕事字段】人物、孕月、状态、风险、胎象、太医、饮食、行动、预计产期、知情者、备注。
 【孕事子女字段】姓名、性别、身份、生母、亲缘、排行、出生、状态、备注。
 【子嗣输出字段】
@@ -181,7 +186,7 @@ const PRESET_DEFAULT = {
 
 【朝堂门阀字段】派系：派系名、领袖、成员、主张、资源、目标、敌对、进度、备注。家族：家族、家主、成员、姻亲、世仇、产业、门生、立场、备注。
 【医疗健康字段】只有正文出现伤病/中毒/脉案/用药/太医诊治时才生成；没有就空数组。字段：人物、日期、症状、诊断、方子、太医、忌口、状态、备注。
-【节庆礼仪字段】已合并进时令：节日、礼仪、主礼、地点、座次、禁忌、节目。
+【节庆礼仪字段】已合并进时令：节日、礼仪、主礼、地点、座次、禁忌、节目。节日必须按年月日推算，写最近的节日，不能写“未记”。
 【孕事字段】人物、孕月、状态、风险、胎象、太医、饮食、行动、预计产期、知情者、备注。
 【孕事子女字段】姓名、性别、身份、生母、亲缘、排行、出生、状态、备注。
 【子嗣输出字段】
@@ -251,7 +256,7 @@ NPC状态不设上限（只写有变化/值得续写的人）；NPC事件 1-3 �
 
 【朝堂门阀字段】派系：派系名、领袖、成员、主张、资源、目标、敌对、进度、备注。家族：家族、家主、成员、姻亲、世仇、产业、门生、立场、备注。
 【医疗健康字段】只有正文出现伤病/中毒/脉案/用药/太医诊治时才生成；没有就空数组。字段：人物、日期、症状、诊断、方子、太医、忌口、状态、备注。
-【节庆礼仪字段】已合并进时令：节日、礼仪、主礼、地点、座次、禁忌、节目。
+【节庆礼仪字段】已合并进时令：节日、礼仪、主礼、地点、座次、禁忌、节目。节日必须按年月日推算，写最近的节日，不能写“未记”。
 【孕事字段】人物、孕月、状态、风险、胎象、太医、饮食、行动、预计产期、知情者、备注。
 【孕事子女字段】姓名、性别、身份、生母、亲缘、排行、出生、状态、备注。
 【子嗣输出字段】
@@ -964,7 +969,13 @@ function normalizeApiProfiles(raw) {
 
 function normalizeSettings(raw) {
     const out = Object.assign({}, DEFAULT_SETTINGS, isPlainObject(raw) ? raw : {});
-    out.version = 2;
+    const previousSettingsVersion = toInt(out.version, 0);
+    out.version = 3;
+    if (previousSettingsVersion < 3) {
+        // 老设置里 injectLetters/injectTimeline 默认是 false，升级后先打开一次。
+        out.injectLetters = true;
+        out.injectTimeline = true;
+    }
     out.enabled = out.enabled !== false;
     out.mode = out.mode === 'main' ? 'main' : 'sub';
     out.trigger = out.trigger === 'manual' ? 'manual' : 'auto';
@@ -977,7 +988,7 @@ function normalizeSettings(raw) {
     out.maxTokens = clamp(toInt(out.maxTokens, 4000), 200, 8000);
     out.debug = isTrue(out.debug);
     out.theme = THEMES[out.theme] ? out.theme : 'A';
-    ['injectEvents', 'injectNpc', 'injectRumors', 'injectLetters', 'injectForeshadow', 'injectRelations', 'injectTimeline', 'pregnancyModule', 'heirModule', 'foreshadowAi', 'foreshadowUser', 'leadGroup', 'memorialModule', 'courtModule', 'medicalModule', 'secretModule', 'calendarModule', 'struggleModule'].forEach(key => {
+    ['injectEvents', 'injectNpc', 'injectRumors', 'injectLetters', 'injectForeshadow', 'injectRelations', 'injectTimeline', 'pregnancyModule', 'heirModule', 'foreshadowAi', 'foreshadowUser', 'leadGroup', 'memorialModule', 'courtModule', 'medicalModule', 'secretModule', 'calendarModule', 'struggleModule', 'injectPregnancy', 'injectHeir', 'injectCourt', 'injectMedical', 'injectSecrets'].forEach(key => {
         out[key] = out[key] !== false;
     });
     out.ballSize = clamp(toInt(out.ballSize, 50), 36, 84);
@@ -2027,7 +2038,7 @@ function buildEventContext() {
             if (x.事件名) push(`[${x.类型 || '斗争'}] ${x.事件名}（${x.阶段 || '进行中'}）`);
         });
     }
-    if (s.courtModule) {
+    if (s.courtModule && s.injectCourt) {
         ((data.朝堂门阀 && data.朝堂门阀.派系) || []).forEach(item => {
             if (item.派系名) push(`[朝堂派系] ${item.派系名}：领袖${item.领袖 || '未记'}，${item.主张 || ''}`);
         });
@@ -2035,7 +2046,7 @@ function buildEventContext() {
             if (item.家族) push(`[门阀] ${item.家族}：家主${item.家主 || '未记'}，${item.立场 || ''}`);
         });
     }
-    if (s.medicalModule) {
+    if (s.medicalModule && s.injectMedical) {
         (Array.isArray(data.医疗健康) ? data.医疗健康 : []).slice(-6).forEach(item => {
             if (item.人物) push(`[医疗] ${item.人物}：${item.症状 || ''}${item.诊断 ? '，' + item.诊断 : ''}`);
         });
@@ -2098,7 +2109,7 @@ function buildEventContext() {
             push(`[关系] ${r.甲}↔${r.乙}：${r.关系 || ''}`);
         });
     }
-    if (s.pregnancyModule) {
+    if (s.pregnancyModule && s.injectPregnancy) {
         (Array.isArray(data.孕事) ? data.孕事 : []).filter(p => !p.已结束).forEach(p => {
             push(`[孕事] ${p.人物}：孕 ${p.孕月 || '?'} 月，${p.状态 || '有孕'}`);
         });
@@ -2106,7 +2117,7 @@ function buildEventContext() {
             push(`[孕事子女] ${child.生母 || '后妃'}所出：${child.姓名}，${child.性别 || ''}，${child.身份 || ''}，亲缘${child.亲缘 || '不详'}`);
         });
     }
-    if (s.heirModule) {
+    if (s.heirModule && s.injectHeir) {
         const h = data.子嗣 && data.子嗣.用户 ? data.子嗣.用户 : {};
         if (h.状态 || h.受孕判定 || h.孕期月 || h.月事最近 || h.排卵期) {
             const cycle = [
@@ -2122,7 +2133,7 @@ function buildEventContext() {
             push(`[子嗣·子女] ${child.姓名}，${child.性别 || ''}，${child.身份 || ''}，生母${child.生母 || '不详'}，亲缘${child.亲缘 || '不详'}`);
         });
     }
-    if (s.secretModule) {
+    if (s.secretModule && s.injectSecrets) {
         (Array.isArray(data.秘辛) ? data.秘辛 : []).slice(-6).forEach(item => {
             if (item && item.内容) {
                 const known = (item.知情者 || []).map(k => `${k.人物}${k.程度 ? '(' + k.程度 + ')' : ''}`).join('、');
@@ -2153,7 +2164,7 @@ function buildExtraModulesPrompt() {
 - 流言（0-2 条）：除了内容，还要写来源人物、传播链（谁传给谁、版本变成什么）、可信度（真/半真/假/未知）。传播链 2-4 人即可。
 - 孕事：只记后妃/其他 NPC 的有孕月份与状态；{{user}} 的孕事写在“子嗣.用户”里，不要混进孕事。后妃已经生产、世界书里已有孩子的，必须写进“孕事子女”；生母写后妃名，亲缘按世界书写（亲生/养子/过继/庶出/嫡出/不详），不要默认亲生。
 - 伏笔：来源必须写具体姓名或具体事件名，例如“淑妃”“太学暗账”；不要写“NPC”“群像”“剧情”这种分类。来源确实不明写“未记名”。
-- 时令（含节庆礼仪）：只有正文出现明确日期、节气、节日、时辰、礼仪时才更新。写年号、年、月、日、节气、节日、礼仪、主礼、地点、座次、禁忌、节目、时辰、备注；没有就留空对象。节庆礼仪合并在这里，不另开模块。
+- 时令（含节庆礼仪）：只有正文出现明确日期、节气、节日、时辰、礼仪时才更新。写年号、年、月、日、节气、节日、礼仪、主礼、地点、座次、禁忌、节目、时辰、备注；节日必须按日期推算最近的节日，不能写“未记”；没有日期就留空对象。节庆礼仪合并在这里，不另开模块。
 - 斗争（0-2 条）：宫斗或政斗。只在有明确动机、利益冲突、行动条件时记录；不要每回硬造。写类型（宫斗/政斗）、事件名、发起者、目标、手段、烈度（低/中/高）、阶段（策划/执行/调查/反制/收场）、证据、知情者、进度、结果。结果开放，不保证成功；不替{{user}}决定中计、受伤、失宠或站队；信息有限，不知道的人不要写成知道。
 - 朝堂门阀：分「派系」和「家族」两段。派系写派系名、领袖、成员、主张、资源、目标、敌对、进度；家族写家族、家主、成员、姻亲、世仇、产业、门生、立场。没有变化可省略，但已有派系/家族被提到时要更新。
 - 医疗健康（**有才生成**）：只有正文出现伤病、中毒、脉案、用药、太医诊治、孕产异常时才写；没有就留空数组，不要每回硬编。写人物、日期、症状、诊断、方子、太医、忌口、状态、备注。普通心情、普通请安不算医案；孕事仍走孕事页。
@@ -2244,7 +2255,7 @@ function buildModuleHandbook() {
 - 斗争：类型、发起者、目标、手段、烈度、阶段、证据、进度。
 - 朝堂门阀：派系（领袖/成员/主张/资源/目标/敌对/进度）、家族（家主/成员/姻亲/世仇/产业/门生/立场）。
 - 医疗健康（有才写）：伤病/中毒/脉案/用药/太医诊治才生成；没有就空数组。人物、日期、症状、诊断、方子、太医、忌口、状态；孕事仍走孕事页。
-- 时令/节庆礼仪：日期、节气、节日、礼仪、主礼、地点、座次、禁忌、节目、时辰。
+- 时令/节庆礼仪：日期、节气、节日、礼仪、主礼、地点、座次、禁忌、节目、时辰；节日按日期推算最近的节，不能写“未记”。
 - 书信：称呼、落款、言外之意；时令：日期、节气、节日、时辰。
 - 关系：甲对乙的方向；伏笔：未回收/已回收。
 - 孕事：只写其他后妃的孕月、状态、风险；已出生子女写“孕事子女”。
@@ -3393,7 +3404,7 @@ const CSS = `
     background: var(--lx-event-bg); color: var(--lx-gold); font-size: 10px;
 }
 .lx-batch-check { width: 14px; height: 14px; accent-color: var(--lx-gold); margin-right: 5px; vertical-align: middle; }
-.lx-follow-btn { float: right; padding: 1px 5px; border: 1px solid var(--lx-border); background: transparent; color: var(--lx-dim); font: inherit; font-size: 9px; cursor: pointer; }
+.lx-follow-btn { margin-left: 6px; padding: 0 3px; border: 1px solid var(--lx-border); background: transparent; color: var(--lx-dim); font: inherit; font-size: 8px; line-height: 1.4; cursor: pointer; vertical-align: middle; }
 .lx-follow-btn.on { border-color: var(--lx-gold); color: var(--lx-gold); }
 .lx-npc-card.followed { border-left-color: var(--lx-gold); box-shadow: inset 3px 0 0 var(--lx-gold); }
 .lx-icon-btn {
@@ -3652,30 +3663,56 @@ const CSS = `
 .lx-rumor::before { content: "「"; color: var(--lx-gold); margin-right: 2px; }
 .lx-rumor::after { content: "」"; color: var(--lx-gold); margin-left: 2px; }
 
-/* 书信 */
-.lx-letter {
-    padding: 13px;
-    border: 1px solid var(--lx-border);
-    background: var(--lx-card-bg);
-    margin-bottom: 11px;
+/* 书信：仿信笺卡片 */
+.lx-letter { margin: 4px 0 15px; position: relative; }
+.lx-letter-sheet {
     position: relative;
-    border-radius: 3px;
+    padding: 14px 16px 13px;
+    border: 1px solid #b99a68;
+    background-color: #f1e3c6;
+    background-image:
+        radial-gradient(rgba(92,65,35,.055) .6px, transparent .6px),
+        repeating-linear-gradient(180deg, transparent 0 25px, rgba(120,90,50,.13) 25px 26px),
+        linear-gradient(180deg, #f7ecd6, #e8d6b4);
+    background-size: 4px 4px, auto, auto;
+    color: #3b2c1c;
+    box-shadow: 0 10px 24px rgba(0,0,0,.22), inset 0 0 24px rgba(120,85,40,.10);
+    transform: rotate(-.35deg);
+    transform-origin: 50% 0;
+    overflow: hidden;
 }
-.lx-letter::before {
-    content: "笺";
-    position: absolute;
-    top: -9px;
-    left: 11px;
-    background: var(--lx-bg-solid);
-    color: var(--lx-gold);
-    padding: 0 5px;
-    font-size: 10px;
-    letter-spacing: 2px;
+.lx-letter.sent .lx-letter-sheet { transform: rotate(.35deg); background-image:
+    radial-gradient(rgba(92,65,35,.05) .6px, transparent .6px),
+    repeating-linear-gradient(180deg, transparent 0 25px, rgba(120,90,50,.12) 25px 26px),
+    linear-gradient(180deg, #f8ead6, #ecd8bc); }
+.lx-letter-sheet::before {
+    content: "";
+    position: absolute; left: 50%; top: 0; bottom: 0; width: 1px;
+    background: linear-gradient(180deg, transparent, rgba(120,85,40,.16) 15%, rgba(120,85,40,.16) 85%, transparent);
+    transform: rotate(2.5deg); transform-origin: 50% 0; opacity: .55;
 }
-.lx-letter.sent { border-left: 3px solid var(--lx-gold); }
-.lx-letter-from { color: var(--lx-gold); font-size: 11.5px; margin-bottom: 7px; font-weight: 700; letter-spacing: 1px; }
-.lx-letter-body { color: var(--lx-text2); font-size: 13px; line-height: 1.75; white-space: pre-wrap; word-break: break-word; }
-.lx-letter-actions { margin-top: 9px; display: flex; gap: 7px; justify-content: flex-end; }
+.lx-letter-sheet::after {
+    content: "";
+    position: absolute; left: 0; right: 0; top: 0; height: 3px;
+    background: linear-gradient(90deg, transparent, rgba(120,85,40,.22), transparent);
+}
+.lx-letter-head {
+    position: relative; display: flex; align-items: baseline; gap: 5px;
+    padding-bottom: 7px; margin-bottom: 8px; border-bottom: 1px dashed rgba(100,72,38,.35);
+}
+.lx-letter-direction { color: #8d5b36; font-size: 9px; letter-spacing: 2px; }
+.lx-letter-name { color: #6f2e22; font-size: 13px; font-weight: 700; letter-spacing: 1px; }
+.lx-letter-date { margin-left: auto; color: #8a7355; font-size: 9.5px; white-space: nowrap; }
+.lx-letter-body { position: relative; z-index: 1; color: #3b2c1c; font-size: 13px; line-height: 26px; white-space: pre-wrap; word-break: break-word; text-align: justify; }
+.lx-letter-sign { position: relative; z-index: 1; margin-top: 8px; padding-right: 30px; text-align: right; color: #6b4d32; font-size: 11px; letter-spacing: 1px; }
+.lx-letter-seal {
+    position: absolute; right: 14px; bottom: 13px; z-index: 2;
+    width: 25px; height: 25px; display: grid; place-items: center;
+    border: 2px solid #a43b2b; color: #a43b2b; font-size: 11px; font-weight: 700;
+    transform: rotate(-8deg); opacity: .82; box-shadow: inset 0 0 0 2px rgba(164,59,43,.12);
+}
+.lx-letter-actions { margin-top: 5px; display: flex; gap: 7px; justify-content: flex-end; }
+.lx-letter-actions .lx-mini-btn { border-color: rgba(185,154,104,.45); color: var(--lx-dim); }
 
 /* 按钮 */
 .lx-btn, .lx-mini-btn {
@@ -4135,7 +4172,7 @@ const CSS = `
     background: var(--lx-event-bg); color: var(--lx-gold); font-size: 10px;
 }
 .lx-batch-check { width: 14px; height: 14px; accent-color: var(--lx-gold); margin-right: 5px; vertical-align: middle; }
-.lx-follow-btn { float: right; padding: 1px 5px; border: 1px solid var(--lx-border); background: transparent; color: var(--lx-dim); font: inherit; font-size: 9px; cursor: pointer; }
+.lx-follow-btn { margin-left: 6px; padding: 0 3px; border: 1px solid var(--lx-border); background: transparent; color: var(--lx-dim); font: inherit; font-size: 8px; line-height: 1.4; cursor: pointer; vertical-align: middle; }
 .lx-follow-btn.on { border-color: var(--lx-gold); color: var(--lx-gold); }
 .lx-npc-card.followed { border-left-color: var(--lx-gold); box-shadow: inset 3px 0 0 var(--lx-gold); }
 .lx-icon-btn {
@@ -4335,7 +4372,11 @@ const CSS = `
 .lx-struggle.level-中 { border-left-color: #c98b2e; }
 .lx-struggle-line { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; margin-top: 5px; font-size: 11.5px; }
 .lx-struggle .lx-arrow { color: var(--lx-gold); }
-.lx-time-big { padding: 10px 12px; border: 1px solid var(--lx-border); background: var(--lx-card-bg); color: var(--lx-gold); font-size: 14px; letter-spacing: 2px; text-align: center; }
+.lx-calendar-stack { display: flex; flex-direction: column; gap: 9px; }
+.lx-time-card, .lx-festival-card { padding: 9px; border: 1px solid var(--lx-border); background: var(--lx-card-bg); }
+.lx-time-card-title { margin-bottom: 6px; color: var(--lx-gold); font-size: 10px; letter-spacing: 3px; }
+.lx-festival-card { background: linear-gradient(180deg, var(--lx-card-bg), transparent); }
+.lx-time-big { padding: 10px 12px; border: 1px solid var(--lx-border); background: var(--lx-event-bg); color: var(--lx-gold); font-size: 14px; letter-spacing: 2px; text-align: center; }
 .lx-time-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 8px; }
 .lx-time-cell { padding: 8px 10px; border: 1px solid var(--lx-border); background: var(--lx-card-bg); }
 .lx-time-cell span { display: block; color: var(--lx-dim); font-size: 10px; }
@@ -5050,14 +5091,24 @@ function renderLetters(list) {
     }
     const html = rows.slice().reverse().map(({ item, index }) => {
         const isSent = item.方向 === '发';
-        const from = isSent ? `致 ${item.去向 || '佚名'}` : `来自 ${item.来源 || '佚名'}`;
-        const cls = isSent ? 'lx-letter sent' : 'lx-letter';
+        const person = isSent ? (item.去向 || '佚名') : (item.来源 || '佚名');
+        const signer = isSent ? getUserDisplayName() : (item.来源 || '佚名');
+        const date = item.日期 || item.时间 || (item.回合 ? `第 ${item.回合} 回` : '');
+        const cls = isSent ? 'lx-letter sent' : 'lx-letter received';
         const action = isSent
             ? `<button type="button" class="lx-mini-btn" data-action="letter-del" data-idx="${index}">删除</button>`
             : `<button type="button" class="lx-mini-btn" data-action="letter-reply" data-idx="${index}">回信</button>`;
         return `<div class="${cls}">
-            <div class="lx-letter-from">—— ${escapeHtml(from)}</div>
-            <div class="lx-letter-body">${escapeHtml(item.内容 || '')}</div>
+            <div class="lx-letter-sheet">
+                <div class="lx-letter-head">
+                    <span class="lx-letter-direction">${isSent ? '寄往' : '来自'}</span>
+                    <span class="lx-letter-name">${escapeHtml(person)}</span>
+                    ${date ? `<span class="lx-letter-date">${escapeHtml(date)}</span>` : ''}
+                </div>
+                <div class="lx-letter-body">${escapeHtml(item.内容 || '')}</div>
+                <div class="lx-letter-sign">—— ${escapeHtml(signer)}${isSent ? ' 手书' : ''}</div>
+                <span class="lx-letter-seal">${isSent ? '寄' : '笺'}</span>
+            </div>
             <div class="lx-letter-actions">${action}</div>
         </div>`;
     }).join('');
@@ -5094,31 +5145,63 @@ function formatTime(data) {
     return [date, t.节气, t.节日, t.时辰].filter(Boolean).join(' · ');
 }
 
+const FESTIVALS = [
+    [1, 1, '春节'], [1, 15, '元宵'], [2, 2, '龙抬头'], [3, 3, '上巳'],
+    [5, 5, '端午'], [7, 7, '七夕'], [7, 15, '中元'], [8, 15, '中秋'],
+    [9, 9, '重阳'], [12, 8, '腊八'], [12, 23, '小年'], [12, 30, '除夕']
+];
+
+function deriveFestival(month, day) {
+    const m = toInt(month, 0);
+    const d = toInt(day, 0);
+    if (!m || !d) return { name: '待推算', date: '', inferred: true };
+    const exact = FESTIVALS.find(([fm, fd]) => fm === m && fd === d);
+    if (exact) return { name: exact[2], date: `${m}月${d}日`, inferred: false };
+    const sorted = FESTIVALS.slice().sort((a, b) => a[0] * 31 + a[1] - (b[0] * 31 + b[1]));
+    const next = sorted.find(([fm, fd]) => fm * 31 + fd > m * 31 + d) || sorted[0];
+    return { name: next[2], date: `${next[0]}月${next[1]}日`, inferred: true };
+}
+
 function renderCalendar(data) {
     const t = (data && data.时令) || {};
     const date = formatTime(data);
-    if (!date && !t.礼仪 && !t.节日) {
+    if (!date && !t.礼仪 && !t.节日 && !t.节气) {
         setPanel('时令', emptyText('时令未记') + '<div class="lx-time-hint">正文出现「景衡 X 年」「三月初八」等日期时，会自动记录。</div>');
         return;
     }
     const year = t.年 || (data.纪年 && data.纪年.年) || 0;
     const era = t.年号 || (data.纪年 && data.纪年.年号) || '景衡';
-    const cells = [
+    const festival = deriveFestival(t.月, t.日);
+    const rawFestival = String(t.节日 || '').trim();
+    const festivalName = rawFestival && !['未记', '无', '不详'].includes(rawFestival) ? rawFestival : festival.name;
+    const timeCells = [
         ['纪年', year ? `${era}${chineseNumber(year)}年` : '不详'],
         ['月日', `${t.月 ? chineseNumber(t.月) + '月' : '不详'}${t.日 ? chineseDay(t.日) : ''}`],
         ['节气', t.节气 || '未记'],
-        ['节日', t.节日 || '未记'],
+        ['时辰', t.时辰 || '未记'],
+        ['备注', t.备注 || '——']
+    ];
+    const festivalCells = [
+        ['节日', festivalName + (festival.inferred && !t.节日 ? `（推算 · ${festival.date}）` : '')],
         ['礼仪', t.礼仪 || '未记'],
         ['主礼', t.主礼 || '未记'],
         ['地点', t.地点 || '未记'],
         ['座次', t.座次 || '未记'],
         ['禁忌', t.禁忌 || '未记'],
-        ['节目', t.节目 || '未记'],
-        ['时辰', t.时辰 || '未记'],
-        ['备注', t.备注 || '——']
+        ['节目', t.节目 || '未记']
     ];
-    const html = `<div class="lx-time-big">${escapeHtml(date)}</div>
-        <div class="lx-time-grid">${cells.map(cell => `<div class="lx-time-cell"><span>${escapeHtml(cell[0])}</span><b>${escapeHtml(String(cell[1]))}</b></div>`).join('')}</div>`;
+    const cell = c => `<div class="lx-time-cell"><span>${escapeHtml(c[0])}</span><b>${escapeHtml(String(c[1]))}</b></div>`;
+    const html = `<div class="lx-calendar-stack">
+        <div class="lx-time-card">
+            <div class="lx-time-card-title">时令</div>
+            <div class="lx-time-big">${escapeHtml(date || '时令未记')}</div>
+            <div class="lx-time-grid">${timeCells.map(cell).join('')}</div>
+        </div>
+        <div class="lx-festival-card">
+            <div class="lx-time-card-title">节庆 · 礼仪</div>
+            <div class="lx-time-grid">${festivalCells.map(cell).join('')}</div>
+        </div>
+    </div>`;
     setPanel('时令', html);
 }
 
@@ -5747,8 +5830,11 @@ function buildSettingsHTML() {
             </div>
             <div class="lx-field">
                 <label class="lx-field-label">提示词预览</label>
-                <button type="button" class="lx-mini-btn" data-action="prompt-preview">预览本次拼接的提示词</button>
-                <div class="lx-field-hint">显示当前预设、世界书、群像状态、本回正文和输出格式的完整拼接。</div>
+                <div class="lx-inline">
+                    <button type="button" class="lx-mini-btn" data-action="prompt-preview">群像补全提示词（只读）</button>
+                    <button type="button" class="lx-mini-btn" data-action="injection-preview">正文注入预览（会影响正文）</button>
+                </div>
+                <div class="lx-field-hint">补全提示词只发给群像生成器，不写进正文；正文注入会作为上下文发给主模型，影响正文但不会写入正文。</div>
             </div>
             <div class="lx-field">
                 <label class="lx-field-label">温度</label>
@@ -5814,7 +5900,12 @@ function buildSettingsHTML() {
                         ${checkRow('lx-inj-letters', s.injectLetters, '书信')}
                         ${checkRow('lx-inj-fp', s.injectForeshadow, '未回收伏笔')}
                         ${checkRow('lx-inj-rel', s.injectRelations, '关系')}
-                        ${checkRow('lx-inj-timeline', s.injectTimeline, '时间线（默认关）')}
+                        ${checkRow('lx-inj-timeline', s.injectTimeline, '时间线')}
+                        ${checkRow('lx-inj-preg', s.injectPregnancy, '孕事 / 孕事子女')}
+                        ${checkRow('lx-inj-heir', s.injectHeir, '子嗣')}
+                        ${checkRow('lx-inj-court', s.injectCourt, '朝堂门阀')}
+                        ${checkRow('lx-inj-medical', s.injectMedical, '医疗健康')}
+                        ${checkRow('lx-inj-secrets', s.injectSecrets, '秘辛')}
                     </div>
                     <div class="lx-field-hint" style="margin-top:8px;">注入越多，主模型越容易延续暗线，但也会占上下文。</div>
                 </div>
@@ -6096,6 +6187,11 @@ function saveSettingsFromForm() {
         injectForeshadow: checked('#lx-inj-fp'),
         injectRelations: checked('#lx-inj-rel'),
         injectTimeline: checked('#lx-inj-timeline'),
+        injectPregnancy: checked('#lx-inj-preg'),
+        injectHeir: checked('#lx-inj-heir'),
+        injectCourt: checked('#lx-inj-court'),
+        injectMedical: checked('#lx-inj-medical'),
+        injectSecrets: checked('#lx-inj-secrets'),
         leadGroup: checked('#lx-lead-group'),
         memorialModule: checked('#lx-memorial-module'),
         secretModule: checked('#lx-secret-module'),
@@ -6515,13 +6611,19 @@ function startSwipeWatcher() {
     }, 700);
 }
 
-async function maybeAutoInitial() {
+async function maybeFirstUserAuto() {
     if (state.initialBootTried) return;
     const s = getSettings();
     if (!s.enabled || s.initialFill !== 'auto' || state.initialTried) return;
     try { if (getGroupData()) return; } catch (e) { return; }
     const id = getLatestAssistantId();
     if (id < 0) return;
+    let hasUser = false;
+    try {
+        const last = getLastMessageId();
+        hasUser = (getChatMessages('0-' + last) || []).some(m => m && (m.is_user || m.role === 'user'));
+    } catch (e) { /* ignore */ }
+    if (!hasUser) return;
     state.initialBootTried = true;
     await handleAiMessage(id, 'swipe');
     if (!getGroupData() && !state.busy) updateInitialButton();
@@ -6569,6 +6671,31 @@ function openPromptPreview() {
             document.execCommand('copy');
             toast('success', '提示词已复制');
         }
+    });
+}
+
+function openInjectionPreview() {
+    if (!state.root) return;
+    const old = state.root.querySelector('.lx-reroll-mask');
+    if (old) old.remove();
+    const doc = state.doc || getDoc();
+    const context = buildEventContext() || '（当前没有可注入的群像线索）';
+    const text = context + '\n\n（以上线索仅供续写参考，不会写进正文。）';
+    const mask = doc.createElement('div');
+    mask.className = 'lx-reroll-mask';
+    mask.innerHTML = `<div class="lx-reroll-dialog" style="width:min(92vw,560px);">
+        <div class="lx-reroll-title">正文注入预览</div>
+        <div class="lx-reroll-hint">这些内容会作为上下文发给主模型，影响正文；不会写进正文本身。</div>
+        <textarea class="lx-reroll-input" readonly style="min-height:320px;font-family:monospace;font-size:10px;">${escapeHtml(text)}</textarea>
+        <div class="lx-reroll-actions"><button type="button" class="lx-mini-btn" data-preview-close>关闭</button><button type="button" class="lx-mini-btn lx-btn-primary" data-preview-copy>复制</button></div>
+    </div>`;
+    state.root.appendChild(mask);
+    const close = () => mask.remove();
+    mask.querySelector('[data-preview-close]').addEventListener('click', close);
+    mask.addEventListener('click', event => { if (event.target === mask) close(); });
+    mask.querySelector('[data-preview-copy]').addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(text); toast('success', '注入内容已复制'); }
+        catch (e) { const area = mask.querySelector('textarea'); area.select(); document.execCommand('copy'); toast('success', '注入内容已复制'); }
     });
 }
 
@@ -6631,6 +6758,9 @@ async function handleAction(action, element) {
             return;
         case 'prompt-preview':
             openPromptPreview();
+            return;
+        case 'injection-preview':
+            openInjectionPreview();
             return;
         case 'follow-toggle': {
             const name = element.dataset.name || '';
@@ -7207,6 +7337,7 @@ function bindTavernEvents() {
     };
 
     on(tavern_events.MESSAGE_RECEIVED, (messageId, type) => handleAiMessage(messageId, type));
+    on(tavern_events.MESSAGE_SENT || 'message_sent', () => setTimeout(maybeFirstUserAuto, 300));
     on(tavern_events.MESSAGE_SWIPED, messageId => handleSwipe(messageId));
     on(tavern_events.MESSAGE_EDITED, messageId => handleEdited(messageId));
     on(tavern_events.MESSAGE_DELETED, () => {
@@ -7234,7 +7365,7 @@ function bindTavernEvents() {
         closeAll();
         setupInjection(true);
         renderAll();
-        setTimeout(maybeAutoInitial, 700);
+    
     });
 }
 
@@ -7285,7 +7416,7 @@ function mount() {
     positionBall();
     renderAll();
     setupInjection();
-    setTimeout(maybeAutoInitial, 700);
+
     state.mounted = true;
     console.log('[群像志] v' + VERSION + ' 已加载');
 }
