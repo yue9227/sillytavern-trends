@@ -68,6 +68,7 @@ const DEFAULT_SETTINGS = {
     mode: 'sub',
     trigger: 'auto',
     initialFill: 'auto',
+    worldbookMode: 'follow',
     presetName: '正常',
     subApiUrl: '',
     subApiKey: '',
@@ -128,7 +129,7 @@ const PRESET_DEFAULT = {
 - 国家事件：朝廷/国家层面，1 条。写朝议、诏令、财政、军队、灾异、礼制、刑狱；不是某个人的心情或位置。没有大事就记一条低强度朝议或奏报。
 - 邻国事件：外国/边境层面，1 条。写使节、边报、贸易、和亲、战和；必须带“国家”。
 - 流言：0-1 条，要能看出谁在说、对谁说。
-- 书信：0-1 封，没有就空着。
+- 书信：0-1 封，只写别人写给{{user}}的来信，不写{{user}}发出或其他人之间的信。
 - 关系：0-1 条，写“甲对乙”的方向。
 - 伏笔：0-1 条；已回收的不要重复。来源写具体姓名/事件名，不写“NPC”。
 - 奏折：0-1 条；写标题、上奏人、主张、反对、状态。
@@ -172,7 +173,7 @@ const PRESET_DEFAULT = {
 - 国家事件：朝廷/国家层面，至少 1 条。领域可写内政、军事、外交、灾异、朝议、礼制、刑狱、财政；写决策、执行、后果，不写某人的心情。
 - 邻国事件：外国/边境层面，至少 1 条。必须带“国家”，领域可写外交、边境、贸易、战争、和亲、使节；写对方朝廷或边关的动作。
 - 流言：0-2 条，写清谁在说、对谁说、在哪说，带一点口吻。
-- 书信：0-1 封，有称呼/落款更好；没有就空。
+- 书信：0-1 封，只写别人写给{{user}}的来信，有称呼/落款更好；不写发出的信。
 - 关系：0-2 条，写“甲对乙”的方向；双方态度不同写两条。
 - 伏笔：0-2 条，只记重要且未回收的线；与已完成事件有关的必须回收。来源写具体姓名/事件名，不写“NPC”。
 - 奏折：0-2 条，朝堂公文；写标题、上奏人、衙门、事由、主张、反对、状态、进度；不是普通事件。
@@ -202,12 +203,12 @@ const PRESET_DEFAULT = {
 - 秘辛：内容、涉及、证据/把柄、知情者[{人物,程度}]、不知情者、来源。程度=全知/部分/怀疑/只知片段。
 - 流言：内容、来源人物、传播链[{人物,版本}]、可信度（真/半真/假/未知）、伏笔。流言不等于事实。
 - 斗争：类型（宫斗/政斗）、事件名、发起者、目标、手段、烈度（低/中/高）、阶段（策划/执行/调查/反制/收场）、证据、知情者、进度、结果。
-- 书信：来源、去向、内容、方向（发/收）、时间；内容带称呼、落款、言外之意。
+- 书信：只写别人给{{user}}的来信；来源、内容、时间，内容带称呼、落款、言外之意。
 - 时令：年号、年、月、日、节气、节日、时辰、备注；只按正文明确日期。
 - 关系：甲、乙、关系；写“甲对乙”的方向，双方态度不同写两条。
 - 伏笔：内容、来源（具体姓名/事件名）、已回收、回收回合；完成的必须回收。
 - 孕事：人物=后妃姓名；孕月=1-10；状态=有孕/稳定/不稳/见红/临盆/已生产/小产/难产；风险=低/中/高或具体风险；胎象=太医脉象/胎动/见红；太医=负责太医；饮食=忌口/安胎药；行动=静养/禁足/卧床；预计产期=日期或“未定”；知情者=[{人物,程度}]；备注。
-- 孕事子女：姓名、性别、身份（太子/太女/王爷/公主/皇子/皇女）、生母、亲缘（按世界书）、排行、出生、状态（在世/夭折/过继）、备注。
+- 孕事子女：姓名、性别、身份（太子/太女/王爷/公主/皇子/皇女）、生母、亲缘（按世界书）、排行、年龄、出生、状态（在世/夭折/过继）、备注。
 - 朝堂门阀：派系名、领袖、成员、主张、资源、目标、敌对、进度；家族、家主、成员、姻亲、世仇、产业、门生、立场。
 - 医疗健康（有才写）：人物、日期、症状、诊断、方子、太医、忌口、状态、备注；只有正文出现伤病/中毒/脉案/用药/太医诊治才写，没有就空数组；与孕事分开，孕事仍走孕事页。
 - 节庆礼仪：已并入时令，写节日、礼仪、主礼、地点、座次、禁忌、节目。
@@ -242,7 +243,7 @@ NPC状态不设上限（只写有变化/值得续写的人）；NPC事件 1-3 �
 - 国家事件：1-2 条国家层面。领域：内政/军事/外交/灾异/朝议/礼制/刑狱/财政。写政策或事件的因果链，不写某人的心情。
 - 邻国事件：1-2 条外国/边境。必须带“国家”；领域：外交/边境/贸易/战争/和亲/使节。写对方朝廷的算计与边关的反应。
 - 流言：0-3 条，能看出传播路径与口吻；流言不等于事实。
-- 书信：0-2 封，含称呼、落款、言外之意；没有就空。
+- 书信：0-2 封，只写别人写给{{user}}的来信，含称呼、落款、言外之意；不写发出的信。
 - 关系：0-3 条，写“甲对乙”的方向；态度变化要写清因为哪件事。
 - 伏笔：0-3 条，只记重要未回收线；完成的必须回收，并写清回收方式。来源写具体姓名/事件名，不写“NPC”。
 - 奏折：1-3 条，朝堂公文；写标题、上奏人、衙门、事由、主张、反对、状态、结果、进度；要能看出谁得利、谁反对。
@@ -272,12 +273,12 @@ NPC状态不设上限（只写有变化/值得续写的人）；NPC事件 1-3 �
 - 秘辛：内容、涉及、证据/把柄、知情者[{人物,程度}]、不知情者、来源。程度=全知/部分/怀疑/只知片段。
 - 流言：内容、来源人物、传播链[{人物,版本}]、可信度（真/半真/假/未知）、伏笔。流言不等于事实。
 - 斗争：类型（宫斗/政斗）、事件名、发起者、目标、手段、烈度（低/中/高）、阶段（策划/执行/调查/反制/收场）、证据、知情者、进度、结果。
-- 书信：来源、去向、内容、方向（发/收）、时间；内容带称呼、落款、言外之意。
+- 书信：只写别人给{{user}}的来信；来源、内容、时间，内容带称呼、落款、言外之意。
 - 时令：年号、年、月、日、节气、节日、时辰、备注；只按正文明确日期。
 - 关系：甲、乙、关系；写“甲对乙”的方向，双方态度不同写两条。
 - 伏笔：内容、来源（具体姓名/事件名）、已回收、回收回合；完成的必须回收。
 - 孕事：人物=后妃姓名；孕月=1-10；状态=有孕/稳定/不稳/见红/临盆/已生产/小产/难产；风险=低/中/高或具体风险；胎象=太医脉象/胎动/见红；太医=负责太医；饮食=忌口/安胎药；行动=静养/禁足/卧床；预计产期=日期或“未定”；知情者=[{人物,程度}]；备注。
-- 孕事子女：姓名、性别、身份（太子/太女/王爷/公主/皇子/皇女）、生母、亲缘（按世界书）、排行、出生、状态（在世/夭折/过继）、备注。
+- 孕事子女：姓名、性别、身份（太子/太女/王爷/公主/皇子/皇女）、生母、亲缘（按世界书）、排行、年龄、出生、状态（在世/夭折/过继）、备注。
 - 朝堂门阀：派系名、领袖、成员、主张、资源、目标、敌对、进度；家族、家主、成员、姻亲、世仇、产业、门生、立场。
 - 医疗健康（有才写）：人物、日期、症状、诊断、方子、太医、忌口、状态、备注；只有正文出现伤病/中毒/脉案/用药/太医诊治才写，没有就空数组；与孕事分开，孕事仍走孕事页。
 - 节庆礼仪：已并入时令，写节日、礼仪、主礼、地点、座次、禁忌、节目。
@@ -741,7 +742,7 @@ function normalizeForeshadow(item, round) {
     if (!content) return null;
     const recovered = isTrue(item.已回收);
     let source = String(item.来源人物 || item.人物 || item.来源 || '手动').trim().slice(0, 30);
-    if (['NPC', 'npc', '群像', '剧情', 'NPC事件', '事件'].includes(source)) source = '未记名';
+    if (['NPC', 'npc', '群像', '剧情', 'NPC事件', '事件', '未记名'].includes(source)) source = inventNpcName(content);
     return {
         内容: content.slice(0, 400),
         来源: source,
@@ -974,6 +975,8 @@ function normalizeData(raw) {
     out.纪年 = { 年号: String(era.年号 || '').trim().slice(0, 10), 年: Math.max(0, toInt(era.年, 0)) };
 
     out.最后更新回合 = Math.max(0, toInt(out.最后更新回合, 0));
+    out.子嗣 = deriveChildAges(out.子嗣, out.时令);
+    out.孕事子女 = deriveChildAges({ 用户: {}, 子女: out.孕事子女 }, out.时令).子女;
     out.版本 = 2;
     return out;
 }
@@ -1034,6 +1037,7 @@ function normalizeSettings(raw) {
     out.mode = out.mode === 'main' ? 'main' : 'sub';
     out.trigger = out.trigger === 'manual' ? 'manual' : 'auto';
     out.initialFill = out.initialFill === 'manual' ? 'manual' : 'auto';
+    out.worldbookMode = ['follow', 'on', 'off'].includes(out.worldbookMode) ? out.worldbookMode : 'follow';
     out.presetName = String(out.presetName || '正常');
     out.subApiUrl = String(out.subApiUrl || '').trim();
     out.subApiKey = String(out.subApiKey || '').trim();
@@ -1706,6 +1710,33 @@ function normalizeHealth(item, round) {
     };
 }
 
+function parseBirthYear(text) {
+    const s = String(text || '');
+    const arabic = s.match(/(?:^|\D)(\d{3,4})\s*年/);
+    if (arabic) return Number(arabic[1]);
+    const cn = s.match(/([一二三四五六七八九十百零〇两]+)\s*年/);
+    if (cn) return parseChineseNumber(cn[1]);
+    return 0;
+}
+
+function deriveChildAges(heir, calendar) {
+    const data = heir && heir.用户 ? heir : normalizeHeir(heir, 0);
+    const curYear = toInt(calendar && calendar.年, 0);
+    if (!curYear) return data;
+    (data.子女 || []).forEach(child => {
+        const birthYear = parseBirthYear(child.出生);
+        if (birthYear) {
+            child.年龄 = Math.max(0, curYear - birthYear);
+        } else {
+            child.年龄 = child.年龄 || 1;
+            child.年龄基准年 = child.年龄基准年 || curYear;
+            child.年龄 += Math.max(0, curYear - child.年龄基准年);
+        }
+        child.年龄基准年 = curYear;
+    });
+    return data;
+}
+
 function normalizeHeirUser(raw, round) {
     const user = isPlainObject(raw) ? raw : {};
     const status = String(user.状态 || '未孕').trim().slice(0, 12);
@@ -1741,6 +1772,8 @@ function normalizeChild(item, round) {
         身份: identity,
         生母: String(item.生母 || item.母亲 || '').trim().slice(0, 40),
         亲缘: String(item.亲缘 || item.血缘 || '不详').trim().slice(0, 20),
+        年龄: Math.max(0, toInt(item.年龄, 0)),
+        年龄基准年: Math.max(0, toInt(item.年龄基准年, 0)),
         排行: Math.max(0, toInt(item.排行 || item.序齿, 0)),
         出生: String(item.出生 || item.生辰 || '').trim().slice(0, 60),
         状态: String(item.状态 || '在世').trim().slice(0, 20),
@@ -2016,6 +2049,8 @@ function mergeGroupData(oldData, fresh) {
     }
     out.子嗣 = mergeHeir(out.子嗣, fresh.子嗣, round);
     out.子嗣 = deriveMenstrualCycle(out.子嗣, out.时令);
+    out.子嗣 = deriveChildAges(out.子嗣, out.时令);
+    out.孕事子女 = deriveChildAges({ 用户: {}, 子女: out.孕事子女 }, out.时令).子女;
 
     if (getSettings().foreshadowAi) {
         const auto = [];
@@ -2148,10 +2183,9 @@ function buildEventContext() {
         });
     }
     if (s.injectLetters) {
-        (Array.isArray(data.书信) ? data.书信 : []).slice(-3).forEach(item => {
+        (Array.isArray(data.书信) ? data.书信 : []).filter(item => item && item.方向 !== '发').slice(-3).forEach(item => {
             if (!item || !item.内容) return;
-            const dir = item.方向 === '发' ? `致${item.去向 || '佚名'}` : `来自${item.来源 || '佚名'}`;
-            push(`[书信·${dir}] ${String(item.内容).slice(0, 60)}`);
+            push(`[书信·来自${item.来源 || '佚名'}] ${String(item.内容).slice(0, 60)}`);
         });
     }
     if (s.injectForeshadow) {
@@ -2227,7 +2261,7 @@ function buildExtraModulesPrompt() {
 - 医疗健康（**有才生成**）：只有正文出现伤病、中毒、脉案、用药、太医诊治、孕产异常时才写；没有就留空数组，不要每回硬编。写人物、日期、症状、诊断、方子、太医、忌口、状态、备注。普通心情、普通请安不算医案；孕事仍走孕事页。
 - 子嗣（仅在模块开启时）：{{user}} 是玩家，在酒馆里会自动替换成人设名字；不管正文用什么名字，子嗣.用户 始终是玩家本人。模块开启时这个对象必须出现；没有变化就照抄当前累计/孕期/状态，不要漏掉。
 - 用户字段：本回次数（只写本回新增，累计由程序加）、受孕判定（未定/可能/已确认/未受孕）、孕期月（0-10）、状态（未孕/有孕/临盆/已生产/小产）、月事最近（日期/“未记”）、月事周期（天，世界书没写就 0）、月事持续（天，没写就 0）、排卵期（日期范围或“未记”）、排卵可能（高/中/低/未知）、发现（谁逐渐知道、知道多少）、备注。月事和排卵期按世界书、正文或太医记录写，不要自己编固定周期。
-- 子女：只写记在{{user}}名下的孩子，只在出生后写。是否亲生、养子、过继、庶出、嫡出按世界书/正文写进“亲缘”，不要默认亲生。字段：姓名、性别、身份（太子/太女/王爷/公主/皇子/皇女）、生母、亲缘、排行、出生、状态（在世/夭折/过继）、备注；不要提前写未出生孩子的性别和封号。后妃所出的孩子写到“孕事子女”，不要写进子嗣。
+- 子女：只写记在{{user}}名下的孩子，只在出生后写。是否亲生、养子、过继、庶出、嫡出按世界书/正文写进“亲缘”，不要默认亲生。字段：姓名、性别、身份（太子/太女/王爷/公主/皇子/皇女）、生母、亲缘、排行、年龄、出生、状态（在世/夭折/过继）、备注；不要提前写未出生孩子的性别和封号。后妃所出的孩子写到“孕事子女”，不要写进子嗣。
   · 孕月建议只作参考：1-3 月防不稳，4-6 月显怀与安胎，7-8 月备产，9-10 月临盆；不要写成医学诊断。
   · 宫斗烈度：低=口舌、份例、礼仪刁难；中=收买宫人、造谣、栽赃；高=皇嗣、巫蛊、谋逆，必须有充分铺垫。
   · 政斗烈度：低=朝议分歧、考核、调任；中=弹劾、财政亏空、边境摩擦；高=战争、谋逆、继承危机，必须符合国力与权限。
@@ -2248,8 +2282,8 @@ function buildExtraModulesPrompt() {
 "斗争":[{"类型":"宫斗","事件名":"","发起者":"","目标":"","手段":"","烈度":"低","阶段":"策划","证据":"","知情者":[{"人物":"","程度":"部分"}],"进度":0,"结果":""}],
 "朝堂门阀":{"派系":[{"派系名":"","领袖":"","成员":[],"主张":"","资源":"","目标":"","敌对":[],"进度":0,"备注":""}],"家族":[{"家族":"","家主":"","成员":[],"姻亲":"","世仇":"","产业":"","门生":[],"立场":"","备注":""}]},
 "医疗健康":[{"人物":"","日期":"","症状":"","诊断":"","方子":"","太医":"","忌口":"","状态":"在治","备注":""}],
-"孕事子女":[{"姓名":"","性别":"男/女","身份":"","生母":"","亲缘":"不详","排行":1,"出生":"","状态":"在世","备注":""}],
-"子嗣":{"用户":{"本回次数":0,"受孕判定":"未定","孕期月":0,"状态":"未孕","月事最近":"","月事周期":0,"月事持续":0,"排卵期":"","排卵可能":"","发现":[{"人物":"","程度":""}],"备注":""},"子女":[{"姓名":"","性别":"男","身份":"皇子","生母":"","亲缘":"不详","排行":1,"出生":"","状态":"在世","备注":""}]}
+"孕事子女":[{"姓名":"","性别":"男/女","身份":"","生母":"","亲缘":"不详","排行":1,"年龄":0,"出生":"","状态":"在世","备注":""}],
+"子嗣":{"用户":{"本回次数":0,"受孕判定":"未定","孕期月":0,"状态":"未孕","月事最近":"","月事周期":0,"月事持续":0,"排卵期":"","排卵可能":"","发现":[{"人物":"","程度":""}],"备注":""},"子女":[{"姓名":"","性别":"男","身份":"皇子","生母":"","亲缘":"不详","排行":1,"年龄":0,"出生":"","状态":"在世","备注":""}]}
 ${off.length ? '【本回关闭】' + off.join('、') + ' 对应字段留空，不要输出。' : ''}`;
 }
 
@@ -2263,7 +2297,7 @@ function buildEnabledModulesPrompt() {
     const medicalNote = s.medicalModule
         ? '\n医疗健康是条件模块：只有正文出现伤病、中毒、脉案、用药、太医诊治时才写；没有就留空数组，不要硬编。'
         : '';
-    return `\n\n【本回必须输出】${on.join('、')}。对应字段即使没有变化也必须出现；没有内容就输出空数组/当前状态，不要整块省略。${medicalNote}\n`;
+    return `\n\n【命名硬性】所有人名必须写全名（姓+名），禁止只写姓氏、封号、职位、NPC、未记名；李承璟和{{user}}用原名。\n【禁止空话】有要求的字段不能写“无”“未记”“不详”，必须根据世界书、正文和时间线推演具体内容；实在没有信息就写合理推测，不要省略整块。\n【本回必须输出】${on.join('、')}。对应字段即使没有变化也必须出现；没有内容就输出空数组/当前状态，不要整块省略。${medicalNote}\n`;
 }
 
 function buildModuleHandbook() {
@@ -2280,12 +2314,12 @@ function buildModuleHandbook() {
 - 秘辛：内容、涉及、证据/把柄、知情者[{人物,程度}]、不知情者、来源。程度=全知/部分/怀疑/只知片段。
 - 流言：内容、来源人物、传播链[{人物,版本}]、可信度（真/半真/假/未知）、伏笔。流言不等于事实。
 - 斗争：类型（宫斗/政斗）、事件名、发起者、目标、手段、烈度（低/中/高）、阶段（策划/执行/调查/反制/收场）、证据、知情者、进度、结果。
-- 书信：来源、去向、内容、方向（发/收）、时间；内容带称呼、落款、言外之意。
+- 书信：只写别人给{{user}}的来信；来源、内容、时间，内容带称呼、落款、言外之意。
 - 时令：年号、年、月、日、节气、节日、时辰、备注；只按正文明确日期。
 - 关系：甲、乙、关系；写“甲对乙”的方向，双方态度不同写两条。
 - 伏笔：内容、来源（具体姓名/事件名）、已回收、回收回合；完成的必须回收。
 - 孕事：人物=后妃姓名；孕月=1-10；状态=有孕/稳定/不稳/见红/临盆/已生产/小产/难产；风险=低/中/高或具体风险；胎象=太医脉象/胎动/见红；太医=负责太医；饮食=忌口/安胎药；行动=静养/禁足/卧床；预计产期=日期或“未定”；知情者=[{人物,程度}]；备注。
-- 孕事子女：姓名、性别、身份（太子/太女/王爷/公主/皇子/皇女）、生母、亲缘（按世界书）、排行、出生、状态（在世/夭折/过继）、备注。
+- 孕事子女：姓名、性别、身份（太子/太女/王爷/公主/皇子/皇女）、生母、亲缘（按世界书）、排行、年龄、出生、状态（在世/夭折/过继）、备注。
 - 朝堂门阀：派系名、领袖、成员、主张、资源、目标、敌对、进度；家族、家主、成员、姻亲、世仇、产业、门生、立场。
 - 医疗健康（有才写）：人物、日期、症状、诊断、方子、太医、忌口、状态、备注；只有正文出现伤病/中毒/脉案/用药/太医诊治才写，没有就空数组；与孕事分开，孕事仍走孕事页。
 - 节庆礼仪：已并入时令，写节日、礼仪、主礼、地点、座次、禁忌、节目。
@@ -2302,6 +2336,7 @@ function buildModuleHandbook() {
 - 关系写方向；伏笔写来源/回收；孕事写后妃孕月、风险、已生产子女。
 - 子嗣写用户月事/周期/持续/排卵期/排卵可能/受孕判定/孕期/状态；子女写姓名/性别/身份/生母/亲缘/排行/出生/状态；亲缘按世界书，不要默认亲生。` : `\n【正常档要求】每个模块至少落到人、时间、状态；没有变化就留空数组/当前状态，不要整块省略。`;
     return `\n\n【模块补充手册】
+- 命名：所有人名写全名（姓+名），禁止只写姓氏/封号/职位/NPC/未记名；李承璟、{{user}}用原名。
 - NPC状态：不设上限；只写本回有变化/值得续写的人；已出场和未出场都可写，不要重写全部。
 - NPC事件：角色个人线，写目标、动作、阻力、进度；至少一条来自未出场 NPC。
 - 国家事件：朝议/诏令/财政/军队/灾异/礼制/刑狱，不写私人心情。
@@ -2466,7 +2501,21 @@ function buildPregnancyPrompt() {
 
 let worldbookCache = { time: 0, key: '', text: '' };
 
+function isStWorldbookEnabled() {
+    try {
+        const ctx = typeof getContext === 'function' ? getContext() : null;
+        if (!ctx) return true;
+        if ('world_info_enabled' in ctx) return !!ctx.world_info_enabled;
+        if ('world_info_activated' in ctx) return !!ctx.world_info_activated;
+        if ('world_info' in ctx) return !!ctx.world_info;
+    } catch (e) { /* ignore */ }
+    return true;
+}
+
 function getWorldbookNamesForPrompt() {
+    const mode = getSettings().worldbookMode || 'follow';
+    if (mode === 'off') return [];
+    if (mode === 'follow' && !isStWorldbookEnabled()) return [];
     const names = new Set();
     const add = value => {
         if (!value) return;
@@ -2477,23 +2526,20 @@ function getWorldbookNamesForPrompt() {
         }
         if (typeof value === 'string') names.add(value.trim());
     };
+    // 只读当前角色卡绑定的世界书，不读全局世界书。
     try {
         if (typeof getCharWorldbookNames === 'function') add(getCharWorldbookNames('current'));
-    } catch (e) { /* ignore */ }
-    try {
-        if (typeof getWorldbookNames === 'function') add(getWorldbookNames());
-    } catch (e) { /* ignore */ }
-    try {
-        const ctx = typeof getContext === 'function' ? getContext() : null;
-        if (ctx) { add(ctx.world_info); add(ctx.worldbook); }
     } catch (e) { /* ignore */ }
     return Array.from(names).filter(Boolean);
 }
 
 function collectWorldbookContext(haystack) {
     const context = String(haystack || '').toLowerCase();
+    const mode = getSettings().worldbookMode || 'follow';
+    if (mode === 'off') return '';
+    if (mode === 'follow' && !isStWorldbookEnabled()) return '';
     const now = Date.now();
-    const cacheKey = hashString(context.slice(0, 4000));
+    const cacheKey = hashString(mode + '|' + context.slice(0, 4000));
     if (worldbookCache.text && worldbookCache.key === cacheKey && now - worldbookCache.time < 30000) return worldbookCache.text;
     const chunks = [];
     const seen = new Set();
@@ -4669,7 +4715,6 @@ const SHELL_HTML = `
         <div class="lx-footer">
             <button type="button" class="lx-btn" data-action="gen">生成</button>
             <button type="button" class="lx-btn" data-action="reroll">重roll</button>
-            <button type="button" class="lx-btn" data-action="write">写信</button>
             <button type="button" class="lx-btn" data-action="refresh">刷新</button>
             <button type="button" class="lx-btn" data-action="settings">设置</button>
         </div>
@@ -5147,20 +5192,18 @@ function renderRumors(list) {
 function renderLetters(list) {
     const arr = Array.isArray(list) ? list : [];
     const rows = arr.map((item, index) => ({ item, index }))
-        .filter(({ item }) => textMatch(item.来源, item.去向, item.内容));
+        .filter(({ item }) => item.方向 !== '发' && textMatch(item.来源, item.内容));
     if (!rows.length) {
         setPanel('书信', emptyText('尚无来信'));
         return;
     }
     const html = rows.slice().reverse().map(({ item, index }) => {
-        const isSent = item.方向 === '发';
-        const person = isSent ? (item.去向 || '佚名') : (item.来源 || '佚名');
-        const signer = isSent ? getUserDisplayName() : (item.来源 || '佚名');
+        const isSent = false;
+        const person = item.来源 || '佚名';
+        const signer = item.来源 || '佚名';
         const date = item.日期 || item.时间 || (item.回合 ? `第 ${item.回合} 回` : '');
-        const cls = isSent ? 'lx-letter sent' : 'lx-letter received';
-        const action = isSent
-            ? `<button type="button" class="lx-mini-btn" data-action="letter-del" data-idx="${index}">删除</button>`
-            : `<button type="button" class="lx-mini-btn" data-action="letter-reply" data-idx="${index}">回信</button>`;
+        const cls = 'lx-letter received';
+        const action = `<button type="button" class="lx-mini-btn" data-action="letter-del" data-idx="${index}">删除</button>`;
         return `<div class="${cls}">
             <div class="lx-letter-sheet">
                 <div class="lx-letter-head">
@@ -5681,7 +5724,7 @@ function renderPregnancy(list, children) {
         html += `<div class="lx-npc-group-title">后妃所出子女 · ${kids.length}</div>`;
         html += kids.map(item => `<div class="lx-heir-child">
             <div class="lx-heir-child-head"><span class="lx-heir-child-name">${escapeHtml(item.姓名)}</span><span class="lx-heir-child-title">${escapeHtml(item.身份 || (item.性别 === '女' ? '皇女' : '皇子'))}</span></div>
-            <div class="lx-heir-line"><b>性别</b>${escapeHtml(item.性别)}　<b>生母</b>${escapeHtml(displayPersonName(item.生母) || '不详')}　<b>排行</b>${item.排行 ? '第' + item.排行 : '未序'}</div>
+            <div class="lx-heir-line"><b>性别</b>${escapeHtml(item.性别)}　<b>生母</b>${escapeHtml(displayPersonName(item.生母) || '不详')}　<b>排行</b>${item.排行 ? '第' + item.排行 : '未序'}　<b>年龄</b>${item.年龄 !== undefined && item.年龄 !== null ? item.年龄 + '岁' : '待推'}</div>
             <div class="lx-heir-line"><b>亲缘</b>${escapeHtml(item.亲缘 || '不详')}　<b>出生</b>${escapeHtml(item.出生 || '未记')}　<b>状态</b>${escapeHtml(item.状态 || '在世')}</div>
             ${item.备注 ? `<div class="lx-preg-note">${escapeHtml(item.备注)}</div>` : ''}
         </div>`).join('');
@@ -5752,7 +5795,17 @@ function renderHeir(heir) {
             <div class="lx-heir-title">主线 · ${escapeHtml(getUserDisplayName())}</div>
             <div class="lx-cycle-editor">
                 <span class="lx-cycle-label">月事起始</span>
-                <input type="date" id="lx-cycle-date" class="lx-cycle-date" value="${escapeAttr(user.月事自定义 || '')}">
+                <select id="lx-cycle-date" class="lx-cycle-date">
+                    ${(() => {
+                        const gd = getGroupData() || {};
+                        const month = toInt(gd.时令 && gd.时令.月, 1) || 1;
+                        const picked = parseMonthDay(user.月事自定义 || user.月事最近);
+                        const selectedDay = picked ? picked.day : 0;
+                        return Array.from({ length: 30 }, (_, i) => i + 1).map(day =>
+                            `<option value="${month}月${chineseDay(day)}" ${day === selectedDay ? 'selected' : ''}>${chineseNumber(month)}月${chineseDay(day)}</option>`
+                        ).join('');
+                    })()}
+                </select>
                 <button type="button" class="lx-mini-btn" data-action="cycle-save">保存</button>
                 <button type="button" class="lx-mini-btn" data-action="cycle-clear">清除</button>
                 <span class="lx-cycle-source">${user.月事自定义 ? '手动' : '推演'}</span>
@@ -5776,7 +5829,7 @@ function renderHeir(heir) {
         html += `<div class="lx-npc-group-title">子女 · ${kids.length}</div>`;
         html += kids.map(item => `<div class="lx-heir-child">
             <div class="lx-heir-child-head"><span class="lx-heir-child-name">${escapeHtml(item.姓名)}</span><span class="lx-heir-child-title">${escapeHtml(item.身份 || (item.性别 === '女' ? '皇女' : '皇子'))}</span></div>
-            <div class="lx-heir-line"><b>性别</b>${escapeHtml(item.性别)}　<b>生母</b>${escapeHtml(displayPersonName(item.生母) || '不详')}　<b>排行</b>${item.排行 ? '第' + item.排行 : '未序'}</div>
+            <div class="lx-heir-line"><b>性别</b>${escapeHtml(item.性别)}　<b>生母</b>${escapeHtml(displayPersonName(item.生母) || '不详')}　<b>排行</b>${item.排行 ? '第' + item.排行 : '未序'}　<b>年龄</b>${item.年龄 !== undefined && item.年龄 !== null ? item.年龄 + '岁' : '待推'}</div>
             <div class="lx-heir-line"><b>亲缘</b>${escapeHtml(item.亲缘 || '不详')}　<b>出生</b>${escapeHtml(item.出生 || '未记')}　<b>状态</b>${escapeHtml(item.状态 || '在世')}</div>
             ${item.备注 ? `<div class="lx-preg-note">${escapeHtml(item.备注)}</div>` : ''}
         </div>`).join('');
@@ -5960,10 +6013,20 @@ function buildSettingsHTML() {
                 <div class="lx-field-hint">第一次对话时自动读取开局上下文补一次；手动则在标题右侧出现「补全」按钮，只在第一条消息附近显示。</div>
             </div>
             <div class="lx-field">
+                <label class="lx-field-label">世界书注入</label>
+                <select id="lx-worldbook-mode" class="lx-select">
+                    <option value="follow" ${s.worldbookMode === 'follow' ? 'selected' : ''}>跟随酒馆世界书开关（默认）</option>
+                    <option value="on" ${s.worldbookMode === 'on' ? 'selected' : ''}>强制读取当前角色卡世界书</option>
+                    <option value="off" ${s.worldbookMode === 'off' ? 'selected' : ''}>关闭世界书注入</option>
+                </select>
+                <div class="lx-field-hint">只读取当前角色卡绑定的世界书，不读全局；跟随酒馆时，酒馆世界书关闭则不注入。</div>
+            </div>
+            <div class="lx-field">
                 <label class="lx-field-label">提示词预览</label>
                 <div class="lx-inline">
                     <button type="button" class="lx-mini-btn" data-action="prompt-preview">群像补全提示词（只读）</button>
                     <button type="button" class="lx-mini-btn" data-action="injection-preview">正文注入预览（会影响正文）</button>
+                    <button type="button" class="lx-mini-btn" data-action="data-edit">编辑当前数据</button>
                 </div>
                 <div class="lx-field-hint">补全提示词只发给群像生成器，不写进正文；正文注入会作为上下文发给主模型，影响正文但不会写入正文。</div>
             </div>
@@ -6304,6 +6367,7 @@ function saveSettingsFromForm() {
         mode: radio('input[name="lx-mode"]') === 'sub' ? 'sub' : 'main',
         trigger: radio('input[name="lx-trigger"]') === 'manual' ? 'manual' : 'auto',
         initialFill: radio('input[name="lx-initial"]') === 'manual' ? 'manual' : 'auto',
+        worldbookMode: ['follow', 'on', 'off'].includes(val('#lx-worldbook-mode')) ? val('#lx-worldbook-mode') : 'follow',
         presetName,
         subApiUrl: val('#lx-api-url').trim(),
         subApiKey: val('#lx-api-key').trim(),
@@ -6805,6 +6869,42 @@ function openPromptPreview() {
     });
 }
 
+function openDataEditor() {
+    if (!state.root) return;
+    const old = state.root.querySelector('.lx-reroll-mask');
+    if (old) old.remove();
+    const doc = state.doc || getDoc();
+    const data = normalizeData(getGroupData() || {});
+    const mask = doc.createElement('div');
+    mask.className = 'lx-reroll-mask';
+    mask.innerHTML = `<div class="lx-reroll-dialog" style="width:min(94vw,640px);">
+        <div class="lx-reroll-title">编辑当前群像数据</div>
+        <div class="lx-reroll-hint">直接改 JSON。保存后会写回当前楼层；改错可能影响后续推演。</div>
+        <textarea class="lx-reroll-input" style="min-height:360px;font-family:monospace;font-size:10px;">${escapeHtml(JSON.stringify(data, null, 2))}</textarea>
+        <div class="lx-reroll-actions"><button type="button" class="lx-mini-btn" data-edit-cancel>取消</button><button type="button" class="lx-mini-btn lx-btn-primary" data-edit-save>保存</button></div>
+    </div>`;
+    state.root.appendChild(mask);
+    const close = () => mask.remove();
+    mask.querySelector('[data-edit-cancel]').addEventListener('click', close);
+    mask.addEventListener('click', event => { if (event.target === mask) close(); });
+    mask.querySelector('[data-edit-save]').addEventListener('click', async () => {
+        try {
+            const parsed = JSON.parse(mask.querySelector('textarea').value);
+            if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('必须是 JSON 对象');
+            const tid = getLatestAssistantId();
+            if (tid < 0) throw new Error('还没有 AI 消息');
+            await attachGroupData(tid, normalizeData(parsed));
+            invalidateData();
+            close();
+            renderAll();
+            setupInjection(true);
+            toast('success', '数据已保存');
+        } catch (e) {
+            toast('error', '保存失败：' + (e.message || e));
+        }
+    });
+}
+
 function openInjectionPreview() {
     if (!state.root) return;
     const old = state.root.querySelector('.lx-reroll-mask');
@@ -6891,6 +6991,9 @@ async function handleAction(action, element) {
             return;
         case 'injection-preview':
             openInjectionPreview();
+            return;
+        case 'data-edit':
+            openDataEditor();
             return;
         case 'follow-toggle': {
             const name = element.dataset.name || '';
