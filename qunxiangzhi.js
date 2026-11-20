@@ -1,4 +1,4 @@
-const VERSION = '0.0.8';
+const VERSION = '0.0.9';
 let userNamesCache = { time: 0, names: [] };
 const HOST_ID = 'lx-group-host';
 const LEGACY_IDS = ['lx-ball', 'lx-panel', 'lx-mask', 'lx-settings', 'lx-group-style'];
@@ -77,12 +77,12 @@ const DEFAULT_SETTINGS = {
     debug: false,
     theme: 'A',
     injectEvents: true,
-    injectNpc: false,
-    injectRumors: false,
-    injectLetters: false,
-    injectForeshadow: false,
-    injectRelations: false,
-    injectTimeline: false,
+    injectNpc: true,
+    injectRumors: true,
+    injectLetters: true,
+    injectForeshadow: true,
+    injectRelations: true,
+    injectTimeline: true,
     pregnancyModule: false,
     heirModule: false,
     memorialModule: true,
@@ -217,6 +217,7 @@ const state = {
     searchTimer: 0,
     autoStartId: -1,
     initialTried: false,
+    initialBootTried: false,
     swipedId: -1,
     swipeAt: 0,
     ui: {
@@ -588,9 +589,11 @@ function normalizeForeshadow(item, round) {
     const content = String(item.内容 || '').trim();
     if (!content) return null;
     const recovered = isTrue(item.已回收);
+    let source = String(item.来源人物 || item.人物 || item.来源 || '手动').trim().slice(0, 30);
+    if (['NPC', 'npc', '群像', '剧情', 'NPC事件', '事件'].includes(source)) source = '未记名';
     return {
         内容: content.slice(0, 400),
-        来源: String(item.来源 || '手动').trim().slice(0, 30),
+        来源: source,
         已回收: recovered,
         回收回合: recovered ? Math.max(1, toInt(item.回收回合, 0)) : 0,
         回合: toInt(item.回合, round || 0) || 0
@@ -598,9 +601,14 @@ function normalizeForeshadow(item, round) {
 }
 
 function parseChineseNumber(input) {
-    const s = String(input || '').replace(/[^\d一二三四五六七八九十百零〇两]/g, '');
+    const s = String(input || '').replace(/[^\d一二三四五六七八九十百零〇两廿卅]/g, '');
     if (!s) return 0;
     if (/^\d+$/.test(s)) return parseInt(s, 10) || 0;
+    if (/[廿卅]/.test(s)) {
+        const base = s.includes('卅') ? 30 : 20;
+        const rest = s.replace(/[廿卅十]/g, '');
+        return base + ({ 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 }[rest] || 0);
+    }
     const digits = { 零: 0, 〇: 0, 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 };
     let total = 0;
     let section = 0;
@@ -1456,6 +1464,8 @@ function normalizeHeirUser(raw, round) {
         孕期月: month,
         状态: status || '未孕',
         月事最近: String((isPlainObject(user.月事) ? user.月事.最近 : user.月事最近) || '').trim().slice(0, 40),
+        月事自定义: String(user.月事自定义 || '').trim().slice(0, 20),
+        月事来源: String(user.月事来源 || '推演').trim().slice(0, 10),
         月事周期: clamp(toInt((isPlainObject(user.月事) ? user.月事.周期 : user.月事周期), 0), 0, 60),
         月事持续: clamp(toInt((isPlainObject(user.月事) ? user.月事.持续 : user.月事持续), 0), 0, 15),
         排卵期: String((isPlainObject(user.排卵期) ? user.排卵期.日期 : user.排卵期) || '').trim().slice(0, 60),
@@ -1496,6 +1506,56 @@ function normalizeHeir(raw, round) {
     };
 }
 
+function parseMonthDay(text) {
+    const s = String(text || '');
+    let m = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+    if (m) return { month: Number(m[2]), day: Number(m[3]) };
+    m = s.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*日?/);
+    if (m) return { month: Number(m[1]), day: Number(m[2]) };
+    m = s.match(/([一二三四五六七八九十廿卅]+)\s*月\s*(?:初)?([一二三四五六七八九十廿卅]+)\s*日?/);
+    if (m) return { month: parseChineseNumber(m[1]), day: parseChineseNumber(m[2]) };
+    return null;
+}
+
+function deriveMenstrualCycle(heir, calendar) {
+    const data = heir && heir.用户 ? heir : normalizeHeir(heir, 0);
+    const user = data.用户;
+    const cur = calendar || {};
+    const curMonth = toInt(cur.月, 0);
+    const curDay = toInt(cur.日, 0);
+    let last = parseMonthDay(user.月事自定义 || user.月事最近);
+    if (!last && curMonth && curDay) {
+        last = { month: curMonth, day: curDay };
+        if (!user.月事最近) user.月事最近 = `${curMonth}月${curDay}日`;
+        user.月事来源 = '推演';
+    }
+    if (user.月事自定义) {
+        user.月事来源 = '手动';
+        user.月事最近 = user.月事自定义;
+    }
+    user.月事最近 = user.月事最近 || '待定';
+    user.月事周期 = user.月事周期 || 28;
+    user.月事持续 = user.月事持续 || 5;
+    if (!last || !curMonth || !curDay) {
+        user.排卵期 = user.排卵期 || '待定';
+        user.排卵可能 = user.排卵可能 || '未知';
+        return data;
+    }
+    const cycle = clamp(toInt(user.月事周期, 28) || 28, 20, 45);
+    const year = toInt(cur.年, 0) || 2026;
+    const lastDate = Date.UTC(year, last.month - 1, last.day);
+    let curDate = Date.UTC(year, curMonth - 1, curDay);
+    if (curDate < lastDate) curDate = Date.UTC(year + 1, curMonth - 1, curDay);
+    const diff = Math.floor((curDate - lastDate) / 86400000);
+    if (diff < 0) return data;
+    const day = (diff % cycle) + 1;
+    const ovStart = Math.max(1, cycle - 15);
+    const ovEnd = Math.min(cycle, cycle - 10);
+    user.排卵期 = `周期第${ovStart}-${ovEnd}天`;
+    user.排卵可能 = day >= ovStart && day <= ovEnd ? '高' : (day <= 5 ? '低' : '中');
+    return data;
+}
+
 function mergePregnancyChildren(oldList, newList, round) {
     const map = new Map();
     (Array.isArray(oldList) ? oldList : []).forEach(item => {
@@ -1530,6 +1590,12 @@ function mergeHeir(oldHeir, freshHeir, round) {
     ['月事最近', '排卵期', '排卵可能'].forEach(key => {
         if (fresh.用户[key]) user[key] = fresh.用户[key];
     });
+    if (fresh.用户.月事自定义) {
+        user.月事自定义 = fresh.用户.月事自定义;
+        user.月事来源 = '手动';
+    } else if (fresh.用户.月事来源) {
+        user.月事来源 = fresh.用户.月事来源;
+    }
     if (fresh.用户.月事周期) user.月事周期 = fresh.用户.月事周期;
     if (fresh.用户.月事持续) user.月事持续 = fresh.用户.月事持续;
     if (fresh.用户.备注) user.备注 = fresh.用户.备注;
@@ -1644,6 +1710,7 @@ function mergeGroupData(oldData, fresh) {
         out.孕事 = derivePregnancies(out.NPC状态, out.孕事, round);
     }
     out.子嗣 = mergeHeir(out.子嗣, fresh.子嗣, round);
+    out.子嗣 = deriveMenstrualCycle(out.子嗣, out.时令);
 
     if (getSettings().foreshadowAi) {
         const auto = [];
@@ -1771,7 +1838,7 @@ function buildEventContext() {
     }
     if (s.injectForeshadow) {
         (Array.isArray(data.伏笔) ? data.伏笔 : []).filter(f => !f.已回收).forEach(f => {
-            if (f.内容) push(`[伏笔] ${f.内容}`);
+            if (f.内容) push(`[伏笔·${f.来源 || '未记名'}] ${f.内容}`);
         });
     }
     if (s.injectRelations) {
@@ -1783,6 +1850,33 @@ function buildEventContext() {
     if (s.pregnancyModule) {
         (Array.isArray(data.孕事) ? data.孕事 : []).filter(p => !p.已结束).forEach(p => {
             push(`[孕事] ${p.人物}：孕 ${p.孕月 || '?'} 月，${p.状态 || '有孕'}`);
+        });
+        (Array.isArray(data.孕事子女) ? data.孕事子女 : []).forEach(child => {
+            push(`[孕事子女] ${child.生母 || '后妃'}所出：${child.姓名}，${child.性别 || ''}，${child.身份 || ''}，亲缘${child.亲缘 || '不详'}`);
+        });
+    }
+    if (s.heirModule) {
+        const h = data.子嗣 && data.子嗣.用户 ? data.子嗣.用户 : {};
+        if (h.状态 || h.受孕判定 || h.孕期月 || h.月事最近 || h.排卵期) {
+            const cycle = [
+                h.月事最近 && `月事最近${h.月事最近}`,
+                h.月事周期 && `周期${h.月事周期}日`,
+                h.月事持续 && `持续${h.月事持续}日`,
+                h.排卵期 && `排卵期${h.排卵期}`,
+                h.排卵可能 && `排卵可能${h.排卵可能}`
+            ].filter(Boolean).join('，');
+            push(`[子嗣·主线] ${h.状态 || '未孕'}，受孕${h.受孕判定 || '未定'}，孕期${h.孕期月 || 0}月${cycle ? '；' + cycle : ''}`);
+        }
+        (Array.isArray(data.子嗣 && data.子嗣.子女) ? data.子嗣.子女 : []).forEach(child => {
+            push(`[子嗣·子女] ${child.姓名}，${child.性别 || ''}，${child.身份 || ''}，生母${child.生母 || '不详'}，亲缘${child.亲缘 || '不详'}`);
+        });
+    }
+    if (s.secretModule) {
+        (Array.isArray(data.秘辛) ? data.秘辛 : []).slice(-6).forEach(item => {
+            if (item && item.内容) {
+                const known = (item.知情者 || []).map(k => `${k.人物}${k.程度 ? '(' + k.程度 + ')' : ''}`).join('、');
+                push(`[秘辛] ${String(item.内容).slice(0, 80)}${known ? '；知情：' + known : ''}`);
+            }
         });
     }
 
@@ -1805,6 +1899,7 @@ function buildExtraModulesPrompt() {
 - 秘辛（0-2 条）：只记值得藏的 secret。内容、涉及谁、证据/把柄。知情者写“谁、知道多少”（全知/部分/怀疑/只知片段）；不知情者写“谁还不知道”。**李承璟和{{user}}也可以知道或不知道，照实写进知情者/不知情者，不要漏掉他们。**
 - 流言（0-2 条）：除了内容，还要写来源人物、传播链（谁传给谁、版本变成什么）、可信度（真/半真/假/未知）。传播链 2-4 人即可。
 - 孕事：只记后妃/其他 NPC 的有孕月份与状态；{{user}} 的孕事写在“子嗣.用户”里，不要混进孕事。后妃已经生产、世界书里已有孩子的，必须写进“孕事子女”；生母写后妃名，亲缘按世界书写（亲生/养子/过继/庶出/嫡出/不详），不要默认亲生。
+- 伏笔：来源必须写具体姓名或具体事件名，例如“淑妃”“太学暗账”；不要写“NPC”“群像”“剧情”这种分类。来源确实不明写“未记名”。
 - 时令：只有正文出现明确日期、节气、节日、时辰时才更新。写年号、年、月、日、节气、节日、时辰、备注；没有就留空对象。
 - 斗争（0-2 条）：宫斗或政斗。只在有明确动机、利益冲突、行动条件时记录；不要每回硬造。写类型（宫斗/政斗）、事件名、发起者、目标、手段、烈度（低/中/高）、阶段（策划/执行/调查/反制/收场）、证据、知情者、进度、结果。结果开放，不保证成功；不替{{user}}决定中计、受伤、失宠或站队；信息有限，不知道的人不要写成知道。
 - 子嗣（仅在模块开启时）：{{user}} 是玩家，在酒馆里会自动替换成人设名字；不管正文用什么名字，子嗣.用户 始终是玩家本人。模块开启时这个对象必须出现；没有变化就照抄当前累计/孕期/状态，不要漏掉。
@@ -1842,9 +1937,38 @@ function buildEnabledModulesPrompt() {
     return `\n\n【本回必须输出】${on.join('、')}。对应字段即使没有变化也必须出现；没有内容就输出空数组/当前状态，不要整块省略。\n`;
 }
 
+function buildModuleHandbook() {
+    const level = getSettings().presetName || '正常';
+    if (level === '精简') {
+        return `\n\n【模块补充】NPC状态不设上限，只写有变化的人；事件要有名有进度；奏折写主张/反对/状态；秘辛写知情与不知情；流言写来源/传播/可信度；斗争写动机/手段/阶段；时令只按正文日期；关系写方向；伏笔未回收；孕事写后妃孕月/状态/孕事子女；子嗣只写{{user}}，月事/排卵按世界书，亲缘不默认亲生。`;
+    }
+    const detail = level === '详细' ? `\n【详细档额外要求】
+- NPC状态每个人至少写：心情、位置、年龄、身份、当前所做，并说明与主线的关系；没出场的人写他此刻在做什么。
+- NPC事件每条写：目标、动作、阻力、下一步、进度；至少一条来自未出场 NPC。
+- 奏折写：上奏人、衙门、事由、主张、反对、当前状态；不要写成普通事件。
+- 秘辛写：内容、涉及、证据、知情者/不知情者；李承璟和{{user}}也可以知道。
+- 流言写：来源人物、传播链 2-4 人、版本变化、可信度；流言不等于事实。
+- 斗争写：类型、发起者、目标、手段、烈度、阶段、证据、知情者、进度；没有动机不要硬造。
+- 书信写：称呼、落款、言外之意；时令写：年号/年/月/日/节气/节日/时辰。
+- 关系写方向；伏笔写来源/回收；孕事写后妃孕月、风险、已生产子女。
+- 子嗣写用户月事/周期/持续/排卵期/排卵可能/受孕判定/孕期/状态；子女写姓名/性别/身份/生母/亲缘/排行/出生/状态；亲缘按世界书，不要默认亲生。` : `\n【正常档要求】每个模块至少落到人、时间、状态；没有变化就留空数组/当前状态，不要整块省略。`;
+    return `\n\n【模块补充手册】
+- NPC状态：不设上限；只写本回有变化/值得续写的人；已出场和未出场都可写，不要重写全部。
+- NPC事件：角色个人线，写目标、动作、阻力、进度；至少一条来自未出场 NPC。
+- 国家事件：朝议/诏令/财政/军队/灾异/礼制/刑狱，不写私人心情。
+- 邻国事件：使节/边报/贸易/战和，必须带国家名。
+- 奏折：公文，写标题、上奏人、衙门、事由、主张、反对、状态、进度。
+- 秘辛：内容、涉及、证据、知情者/不知情者；{{user}}和李承璟也可能知道。
+- 流言：来源、传播链、可信度；不要写成事实。
+- 斗争：类型、发起者、目标、手段、烈度、阶段、证据、进度。
+- 书信：称呼、落款、言外之意；时令：日期、节气、节日、时辰。
+- 关系：甲对乙的方向；伏笔：未回收/已回收。
+- 孕事：只写其他后妃的孕月、状态、风险；已出生子女写“孕事子女”。
+- 子嗣：只写{{user}}；月事、周期、持续、排卵期、排卵可能按世界书/正文/太医记录；亲缘按世界书，不默认亲生。${detail}`;
+}
+
 function wrapSubPrompt(core) {
-    return buildEnabledModulesPrompt() + core + buildExtraModulesPrompt() + buildPregnancyPrompt() + buildEventContext() + `\n\n【输出格式（必须遵守）】
-只输出一个合法 JSON 对象，不要输出解释、前后缀或 Markdown 代码块。`;
+    return buildEnabledModulesPrompt() + core + buildExtraModulesPrompt() + buildPregnancyPrompt() + buildModuleHandbook() + buildEventContext();
 }
 
 function setupInjection(force) {
@@ -1976,6 +2100,80 @@ function buildPregnancyPrompt() {
 "孕事子女": [{"姓名":"","性别":"男/女","身份":"","生母":"","排行":1,"出生":"","状态":"在世","备注":""}]`;
 }
 
+let worldbookCache = { time: 0, key: '', text: '' };
+
+function getWorldbookNamesForPrompt() {
+    const names = new Set();
+    const add = value => {
+        if (!value) return;
+        if (Array.isArray(value)) { value.forEach(add); return; }
+        if (typeof value === 'object') {
+            ['primary', 'additional', 'worldbook', 'name'].forEach(key => add(value[key]));
+            return;
+        }
+        if (typeof value === 'string') names.add(value.trim());
+    };
+    try {
+        if (typeof getCharWorldbookNames === 'function') add(getCharWorldbookNames('current'));
+    } catch (e) { /* ignore */ }
+    try {
+        if (typeof getWorldbookNames === 'function') add(getWorldbookNames());
+    } catch (e) { /* ignore */ }
+    try {
+        const ctx = typeof getContext === 'function' ? getContext() : null;
+        if (ctx) { add(ctx.world_info); add(ctx.worldbook); }
+    } catch (e) { /* ignore */ }
+    return Array.from(names).filter(Boolean);
+}
+
+function collectWorldbookContext(haystack) {
+    const context = String(haystack || '').toLowerCase();
+    const now = Date.now();
+    const cacheKey = hashString(context.slice(0, 4000));
+    if (worldbookCache.text && worldbookCache.key === cacheKey && now - worldbookCache.time < 30000) return worldbookCache.text;
+    const chunks = [];
+    const seen = new Set();
+    const addEntries = list => {
+        if (!Array.isArray(list)) list = list && Array.isArray(list.entries) ? list.entries : [];
+        list.forEach(entry => {
+            if (!entry || entry.enabled === false || entry.disabled === true) return;
+            const content = String(entry.content || entry.内容 || '').trim();
+            if (!content) return;
+            const title = String(entry.comment || entry.name || entry.标题 || '').trim();
+            const rawKeys = [].concat(entry.key || [], entry.keys || entry.关键字 || []);
+            const keys = rawKeys.flatMap(item => String(item).split(/[,，、\s]+/)).filter(k => k.length >= 2);
+            const matched = !!context && (keys.some(k => context.includes(k.toLowerCase())) || (title.length >= 2 && context.includes(title.toLowerCase())));
+            // 只读相关条目，不把整本世界书塞进提示词。
+            if (!matched) return;
+            const key = title + '\u0000' + content.slice(0, 80);
+            if (seen.has(key)) return;
+            seen.add(key);
+            chunks.push((title ? `【${title}】` : '') + content);
+        });
+    };
+    for (const name of getWorldbookNamesForPrompt()) {
+        let list = null;
+        try {
+            if (typeof getWorldbook === 'function') list = getWorldbook(name);
+        } catch (e) { /* try next API */ }
+        if (!list) {
+            try {
+                if (typeof getLorebookEntries === 'function') list = getLorebookEntries(name);
+            } catch (e) { /* ignore */ }
+        }
+        addEntries(list);
+        if (chunks.join('\n').length > 8000) break;
+    }
+    const text = chunks.join('\n').slice(0, 8000);
+    if (text) worldbookCache = { time: now, key: cacheKey, text };
+    return text;
+}
+
+function buildWorldbookPrompt(haystack) {
+    const text = collectWorldbookContext(haystack);
+    return text ? `\n\n【世界书资料】（只取与当前人物/剧情相关的条目；人物关系、已有子女、孕事、位份以此为准，没写的不要编）\n${text}` : '';
+}
+
 async function generateSub(settings, options) {
     const opts = options || {};
     const s = settings || getSettings();
@@ -2004,9 +2202,12 @@ async function generateSub(settings, options) {
 
     const baselineText = JSON.stringify(baseline, null, 2).slice(0, 18000);
     const prompt = wrapSubPrompt(core)
+        + buildWorldbookPrompt(ctx + '\n' + baselineText + '\n' + (opts.instruction || ''))
         + (opts.initial ? '\n\n【开局补全】这是第一次补全：结合世界书、人设、开场白和最初几层对话，建立所有已出现和世界书提到的 NPC、国家事件、时令与线索；不要只写眼前几个人。' : '')
+        + (opts.instruction ? `\n\n【本次重roll要求】\n${opts.instruction}` : '')
         + `\n\n【当前群像状态】\n` + baselineText
-        + `\n\n【本回正文】\n` + ctx.slice(0, 12000);
+        + `\n\n【本回正文】\n` + ctx.slice(0, 12000)
+        + `\n\n【输出格式（必须遵守）】\n只输出一个合法 JSON 对象，不要输出解释、前后缀或 Markdown 代码块。`;
 
     const config = {
         user_input: prompt,
@@ -2191,7 +2392,7 @@ async function manualGenerate() {
     }
 }
 
-async function rerollGroup() {
+async function rerollGroup(instruction) {
     if (state.busy) { toast('warning', '正在生成中，请稍候'); return; }
     const s = getSettings();
     if (!s.enabled) { toast('warning', '群像系统未启用'); return; }
@@ -2210,7 +2411,7 @@ async function rerollGroup() {
     const logEntry = { 消息ID: tid + '(重roll)', 模式: '重roll', 标签: '', 原始: '', 结果: '' };
     try {
         const baseline = getPrevGroupData(tid) || {};
-        const parsed = await generateSub(s, { messageId: tid, baseline });
+        const parsed = await generateSub(s, { messageId: tid, baseline, instruction: String(instruction || '').trim().slice(0, 500) });
         if (gen !== state.gen) return;
         if (parsed && parsed.__error) {
             logEntry.标签 = '解析失败';
@@ -2250,6 +2451,8 @@ async function handleSwipe(messageId) {
     if (!Number.isFinite(id) || id < 0) {
         try { id = getLatestAssistantId(); } catch (e) { id = -1; }
     }
+    // 事件和轮询可能同时发现同一次重roll，1.5 秒内只处理一次。
+    if (Number.isFinite(id) && id >= 0 && state.swipedId === id && (Date.now() - state.swipeAt) < 1500) return;
     if (Number.isFinite(id) && id >= 0) {
         state.swipedId = id;
         state.swipeAt = Date.now();
@@ -2698,10 +2901,9 @@ const CSS = `
     box-shadow: 0 0 8px rgba(232,200,106,0.8), 0 0 18px rgba(212,175,55,0.35);
     pointer-events: none;
 }
-.lx-ball-dot {
+.lx-ball-dot { display: none !important; }
+.lx-ball-badge {
     position: absolute;
-    top: 0;
-    right: 0;
     width: 9px;
     height: 9px;
     border-radius: 50%;
@@ -2709,9 +2911,10 @@ const CSS = `
     border: 1.5px solid #17110b;
     box-shadow: 0 0 7px rgba(192,57,43,0.8);
     display: none;
-    z-index: 2;
+    z-index: 100001;
+    pointer-events: none;
 }
-#lx-ball.has-new .lx-ball-dot { display: block; animation: lx-pulse 1.8s ease-in-out infinite; }
+.lx-ball-badge.show { display: block; animation: lx-pulse 1.8s ease-in-out infinite; }
 #lx-ball:active { transform: scale(0.93); }
 #lx-ball.is-hidden { opacity: 0; pointer-events: none; transform: scale(0.82); }
 #lx-ball.dragging {
@@ -2756,6 +2959,44 @@ const CSS = `
     touch-action: none;
 }
 #lx-mask.show { display: block; }
+
+/* 重roll 要求弹窗 */
+.lx-reroll-mask {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    background: rgba(0,0,0,.58);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    pointer-events: auto;
+}
+.lx-reroll-dialog {
+    width: min(88vw, 380px);
+    border: 1px solid var(--lx-border);
+    background: var(--lx-bg);
+    color: var(--lx-text);
+    box-shadow: var(--lx-shadow);
+    padding: 14px;
+}
+.lx-reroll-title { color: var(--lx-gold); font-size: 13px; letter-spacing: 2px; margin-bottom: 6px; }
+.lx-reroll-hint { color: var(--lx-dim); font-size: 10px; line-height: 1.6; margin-bottom: 8px; }
+.lx-reroll-input {
+    width: 100%;
+    min-height: 86px;
+    resize: vertical;
+    padding: 8px;
+    border: 1px solid var(--lx-border);
+    background: var(--lx-input-bg);
+    color: var(--lx-text);
+    font: inherit;
+    font-size: 12px;
+    line-height: 1.6;
+}
+.lx-reroll-actions { display: flex; gap: 6px; justify-content: flex-end; margin-top: 10px; }
 
 /* 主面板 / 设置面板 */
 #lx-panel, #lx-settings {
@@ -3376,6 +3617,10 @@ const CSS = `
     font-size: 11px;
     letter-spacing: 2px;
 }
+.lx-cycle-editor { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin: 0 0 8px; padding: 6px; border: 1px solid var(--lx-border); background: var(--lx-event-bg); }
+.lx-cycle-label { color: var(--lx-gold); font-size: 10px; }
+.lx-cycle-date { flex: 1; min-width: 110px; padding: 3px 5px; border: 1px solid var(--lx-border); background: var(--lx-input-bg); color: var(--lx-text); font-size: 10px; }
+.lx-cycle-source { color: var(--lx-dim); font-size: 9px; }
 .lx-heir-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
 .lx-heir-stats div { padding: 6px 5px; border: 1px solid var(--lx-border); background: var(--lx-event-bg); text-align: center; }
 .lx-heir-stats span { display: block; color: var(--lx-dim); font-size: 9px; }
@@ -3819,6 +4064,7 @@ const SHELL_HTML = `
         <span class="lx-ball-spark" aria-hidden="true"></span>
         <span class="lx-ball-dot" aria-hidden="true"></span>
     </div>
+    <span id="lx-ball-badge" class="lx-ball-badge" aria-hidden="true"></span>
     <div id="lx-mask" aria-hidden="true"></div>
     <div id="lx-panel" role="dialog" aria-modal="true" aria-label="群像志">
         <div class="lx-header">
@@ -4110,6 +4356,11 @@ function positionBall() {
     ball.style.left = Math.round(left) + 'px';
     ball.style.top = Math.round(top) + 'px';
     ball.style.right = 'auto';
+    const badge = state.refs.badge;
+    if (badge) {
+        badge.style.left = Math.round(left + size - 7) + 'px';
+        badge.style.top = Math.round(top - 2) + 'px';
+    }
     state.ball.currentLeft = left;
     state.ball.currentTop = top;
 }
@@ -4149,10 +4400,12 @@ function saveBallPosition() {
 function markNewData() {
     if (state.ui.panelOpen) return;
     if (state.refs.ball) state.refs.ball.classList.add('has-new');
+    if (state.refs.badge) state.refs.badge.classList.add('show');
 }
 
 function clearNewData() {
     if (state.refs.ball) state.refs.ball.classList.remove('has-new');
+    if (state.refs.badge) state.refs.badge.classList.remove('show');
 }
 
 /* ------------------------------------------------------------------ */
@@ -4698,6 +4951,19 @@ function pregnancyTip(month) {
     return '孕 9-10 月：临盆在即，产房、稳婆、太医与名分都要提前落定。';
 }
 
+async function saveHeirCycle(date) {
+    const data = normalizeData(getGroupData() || {});
+    data.子嗣 = normalizeHeir(data.子嗣, 0);
+    data.子嗣.用户.月事自定义 = String(date || '').trim();
+    data.子嗣.用户.月事来源 = date ? '手动' : '推演';
+    if (!date) data.子嗣.用户.月事最近 = '';
+    data.子嗣 = deriveMenstrualCycle(data.子嗣, data.时令);
+    const tid = getLatestAssistantId();
+    if (tid >= 0) await attachGroupData(tid, data);
+    invalidateData();
+    renderAll();
+}
+
 function displayPersonName(name) {
     const n = cleanName(name);
     if (!n) return '';
@@ -4720,6 +4986,13 @@ function renderHeir(heir) {
         const known = user.发现 || [];
         html += `<div class="lx-heir-user">
             <div class="lx-heir-title">主线 · ${escapeHtml(getUserDisplayName())}</div>
+            <div class="lx-cycle-editor">
+                <span class="lx-cycle-label">月事起始</span>
+                <input type="date" id="lx-cycle-date" class="lx-cycle-date" value="${escapeAttr(user.月事自定义 || '')}">
+                <button type="button" class="lx-mini-btn" data-action="cycle-save">保存</button>
+                <button type="button" class="lx-mini-btn" data-action="cycle-clear">清除</button>
+                <span class="lx-cycle-source">${user.月事自定义 ? '手动' : '推演'}</span>
+            </div>
             <div class="lx-heir-stats">
                 <div><span>累计次数</span><b>${user.内射次数 || 0}</b></div>
                 <div><span>本回</span><b>${user.本回次数 ? '+' + user.本回次数 : '—'}</b></div>
@@ -4797,7 +5070,9 @@ function isInitialFillAvailable() {
     try { if (getGroupData()) return false; } catch (e) { /* ignore */ }
     try {
         const last = getLastMessageId();
-        return last >= 0 && last <= 3;
+        // 0 层也要能看到按钮；有些酒馆此时 last 是 -1，要用最新 AI 楼层兜底。
+        if (last >= 0 && last > 3) return false;
+        return getLatestAssistantId() >= 0;
     } catch (e) { return false; }
 }
 
@@ -5654,6 +5929,39 @@ function deleteApiProfile() {
     toast('success', '已删除');
 }
 
+function startSwipeWatcher() {
+    if (state.watchTimer) clearInterval(state.watchTimer);
+    state.watchLastId = -1;
+    state.watchLastHash = '';
+    state.watchTimer = setInterval(async () => {
+        try {
+            const id = getLatestAssistantId();
+            if (id < 0) return;
+            const msg = getChatMessages(id)[0];
+            if (!msg || msg.is_generating) return;
+            const hash = hashString(msg.message || '');
+            if (state.watchLastId === id && state.watchLastHash && hash !== state.watchLastHash) {
+                clearTimeout(state.watchSettle);
+                state.watchSettle = setTimeout(() => handleSwipe(id), 320);
+            }
+            state.watchLastId = id;
+            state.watchLastHash = hash;
+        } catch (e) { /* ignore */ }
+    }, 700);
+}
+
+async function maybeAutoInitial() {
+    if (state.initialBootTried) return;
+    const s = getSettings();
+    if (!s.enabled || s.initialFill !== 'auto' || state.initialTried) return;
+    try { if (getGroupData()) return; } catch (e) { return; }
+    const id = getLatestAssistantId();
+    if (id < 0) return;
+    state.initialBootTried = true;
+    await handleAiMessage(id, 'swipe');
+    if (!getGroupData() && !state.busy) updateInitialButton();
+}
+
 async function initialFill() {
     if (!isInitialFillAvailable()) {
         toast('warning', '当前不是第一条消息，或已有群像数据');
@@ -5666,6 +5974,36 @@ async function initialFill() {
         state.initialTried = false;
         updateInitialButton();
     }
+}
+
+function openRerollDialog() {
+    if (state.busy) { toast('warning', '正在生成中，请稍候'); return; }
+    if (!state.root) return;
+    const old = state.root.querySelector('.lx-reroll-mask');
+    if (old) old.remove();
+    const doc = state.doc || getDoc();
+    const mask = doc.createElement('div');
+    mask.className = 'lx-reroll-mask';
+    mask.innerHTML = `<div class="lx-reroll-dialog">
+        <div class="lx-reroll-title">重roll 要求</div>
+        <div class="lx-reroll-hint">可以写这次重roll要偏重什么，例如「多写淑妃的孩子」「让孕事更明显」「这一楼不要新增人物」。留空则正常重roll。</div>
+        <textarea class="lx-reroll-input" placeholder="例如：重roll时把淑妃已有孩子写进孕事子女；子嗣月事按世界书推演。"></textarea>
+        <div class="lx-reroll-actions">
+            <button type="button" class="lx-mini-btn" data-reroll-cancel>取消</button>
+            <button type="button" class="lx-mini-btn lx-btn-primary" data-reroll-ok>开始重roll</button>
+        </div>
+    </div>`;
+    state.root.appendChild(mask);
+    const input = mask.querySelector('.lx-reroll-input');
+    const close = () => mask.remove();
+    mask.querySelector('[data-reroll-cancel]').addEventListener('click', close);
+    mask.addEventListener('click', event => { if (event.target === mask) close(); });
+    mask.querySelector('[data-reroll-ok]').addEventListener('click', () => {
+        const instruction = String(input.value || '').trim();
+        close();
+        rerollGroup(instruction);
+    });
+    setTimeout(() => input.focus(), 50);
 }
 
 /* ------------------------------------------------------------------ */
@@ -5695,8 +6033,18 @@ async function handleAction(action, element) {
         case 'initial-fill':
             await initialFill();
             return;
+        case 'cycle-save': {
+            const input = state.shadow && state.shadow.querySelector('#lx-cycle-date');
+            await saveHeirCycle(input ? input.value : '');
+            toast('success', input && input.value ? '月事日期已保存' : '已清空自定义日期');
+            return;
+        }
+        case 'cycle-clear':
+            await saveHeirCycle('');
+            toast('success', '已清空自定义日期');
+            return;
         case 'reroll':
-            await rerollGroup();
+            openRerollDialog();
             return;
         case 'write':
             await writeNewLetter();
@@ -6160,6 +6508,8 @@ function cleanupLegacy(doc) {
 function collectRefs(root) {
     const refs = {
         ball: root.querySelector('#lx-ball'),
+        badge: root.querySelector('#lx-ball-badge'),
+        initial: root.querySelector('.lx-initial-btn'),
         mask: root.querySelector('#lx-mask'),
         panel: root.querySelector('#lx-panel'),
         settings: root.querySelector('#lx-settings'),
@@ -6230,6 +6580,7 @@ function bindTavernEvents() {
         state.gen++;
         state.processed.clear();
         state.initialTried = false;
+        state.initialBootTried = false;
         invalidateData();
         renderAll();
         setupInjection(true);
@@ -6239,6 +6590,7 @@ function bindTavernEvents() {
         state.processed.clear();
         state.pending = null;
         state.initialTried = false;
+        state.initialBootTried = false;
         userNamesCache = { time: 0, names: [] };
         state.searchQuery = '';
         const search = state.shadow && state.shadow.querySelector('#lx-search-input');
@@ -6248,6 +6600,7 @@ function bindTavernEvents() {
         closeAll();
         setupInjection(true);
         renderAll();
+        setTimeout(maybeAutoInitial, 700);
     });
 }
 
@@ -6292,11 +6645,13 @@ function mount() {
 
     bindEvents();
     bindTavernEvents();
+    startSwipeWatcher();
     applyTheme();
     syncViewportVars();
     positionBall();
     renderAll();
     setupInjection();
+    setTimeout(maybeAutoInitial, 700);
     state.mounted = true;
     console.log('[群像志] v' + VERSION + ' 已加载');
 }
@@ -6305,6 +6660,8 @@ function unmount() {
     if (!state.mounted && !state.host) return;
     state.gen++;
     state.tavernGen++;
+    if (state.watchTimer) { clearInterval(state.watchTimer); state.watchTimer = null; }
+    if (state.watchSettle) { clearTimeout(state.watchSettle); state.watchSettle = null; }
     if (state.injection) {
         try { state.injection.uninject(); } catch (e) { /* ignore */ }
         state.injection = null;
@@ -6404,6 +6761,7 @@ export const __test = {
     mergeHeir,
     getProgressNum,
     parseChineseNumber,
+    deriveMenstrualCycle,
     incrementAge,
     extractEra,
     extractCalendar,
