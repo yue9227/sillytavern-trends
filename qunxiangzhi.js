@@ -1,4 +1,4 @@
-const VERSION = '0.0.5';
+const VERSION = '0.0.6';
 let userNamesCache = { time: 0, names: [] };
 const HOST_ID = 'lx-group-host';
 const LEGACY_IDS = ['lx-ball', 'lx-panel', 'lx-mask', 'lx-settings', 'lx-group-style'];
@@ -1091,6 +1091,24 @@ function getPrevGroupData(id) {
     return null;
 }
 
+async function clearGroupDataFromMessage(messageId) {
+    try {
+        const msgs = getChatMessages(messageId);
+        if (!msgs || !msgs.length) return false;
+        const msg = msgs[0];
+        if (!msg || !msg.data || !Object.prototype.hasOwnProperty.call(msg.data, '群像')) return false;
+        // 酒馆的 setChatMessages 对 data 可能做浅合并；只 delete 有时删不掉，
+        // 这里同时写 null，读取端会把 null 当作没有群像数据。
+        const nextData = Object.assign({}, msg.data, { 群像: null });
+        await setChatMessages([{ message_id: messageId, data: nextData }], { refresh: 'none' });
+        invalidateData();
+        return true;
+    } catch (e) {
+        console.warn('[群像志] 清理楼层群像数据失败', e);
+        return false;
+    }
+}
+
 async function attachGroupData(messageId, data) {
     try {
         const msgs = getChatMessages(messageId);
@@ -2160,6 +2178,10 @@ async function rerollGroup() {
 
     const gen = state.gen;
     try { const latest = getChatMessages(tid)[0]; if (latest) await advanceYearFromMessage(tid, latest.message); } catch (e) { /* ignore */ }
+    // 重roll 是重做这一层：先清掉旧群像，避免失败/中断时残留上一版。
+    await clearGroupDataFromMessage(tid);
+    invalidateData();
+    renderAll();
     state.busy = true;
     setBusyUI(true);
     toast('info', '重新推演中…');
@@ -2200,11 +2222,23 @@ async function rerollGroup() {
     }
 }
 
-async function handleSwipe() {
-    // 群像数据挂在楼层 data 上，不依赖正文标签；滑动只需重读并重绘。
+async function handleSwipe(messageId) {
+    // 正文重roll/滑动：这一层正文换了，旧群像必须一起清掉，避免残留上一版。
+    let id = Number(messageId);
+    if (!Number.isFinite(id) || id < 0) {
+        try { id = getLatestAssistantId(); } catch (e) { id = -1; }
+    }
+    if (Number.isFinite(id) && id >= 0) {
+        await clearGroupDataFromMessage(id);
+    }
+    if (!getGroupData()) state.initialTried = false;
     invalidateData();
     renderAll();
     setupInjection();
+    const s = getSettings();
+    if (s.enabled && s.trigger === 'auto' && Number.isFinite(id) && id >= 0) {
+        await handleAiMessage(id, 'swipe');
+    }
 }
 
 async function handleEdited() {
@@ -5995,6 +6029,10 @@ function bindTavernEvents() {
     on(tavern_events.MESSAGE_SWIPED, messageId => handleSwipe(messageId));
     on(tavern_events.MESSAGE_EDITED, messageId => handleEdited(messageId));
     on(tavern_events.MESSAGE_DELETED, () => {
+        // 删楼后旧楼层数据不能再作为当前基线；同时让正在跑的生成本轮作废。
+        state.gen++;
+        state.processed.clear();
+        state.initialTried = false;
         invalidateData();
         renderAll();
         setupInjection(true);
