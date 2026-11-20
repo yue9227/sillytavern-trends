@@ -1,4 +1,4 @@
-const VERSION = '0.0.1';
+const VERSION = '0.0.3';
 const HOST_ID = 'lx-group-host';
 const LEGACY_IDS = ['lx-ball', 'lx-panel', 'lx-mask', 'lx-settings', 'lx-group-style'];
 const MAX_LOG = 10;
@@ -6,15 +6,61 @@ const BALL_MARGIN = 8;
 const CHARACTER_NAME = '李承璟';
 
 const THEMES = {
-    A: { name: '宣纸米黄', bg: 'linear-gradient(160deg,#fcf8f0 0%,#f4ead9 100%)', solid: '#fbf6ec', border: '#d8c3a0', gold: '#a56a2f', text: '#2b2218', text2: '#5a4a36', dim: '#8f7c63', input: 'rgba(255,255,255,0.72)', card: 'rgba(255,255,255,0.55)', event: 'rgba(176,122,63,0.07)', shadow: '0 24px 80px rgba(80,50,20,0.22),0 2px 10px rgba(80,50,20,0.10)' },
-    B: { name: '青瓷', bg: 'linear-gradient(180deg,#eef5f0 0%,#f8fbf8 100%)', solid: '#eef5f0', border: '#9fb9aa', gold: '#3f7f6a', text: '#1f3029', text2: '#41584d', dim: '#7f998c', input: 'rgba(255,255,255,0.78)', card: 'rgba(63,127,106,0.06)', event: 'rgba(30,60,45,0.04)', shadow: '0 0 0 4px rgba(255,255,255,0.55),0 0 0 5px #9fb9aa,0 20px 60px rgba(20,50,35,0.22)' },
-    C: { name: '玄墨银', bg: 'linear-gradient(180deg,#171a20 0%,#0b0d11 100%)', solid: '#171a20', border: '#3b4450', gold: '#c2cfdf', text: '#e8eef7', text2: '#aeb9c8', dim: '#6d7888', input: 'rgba(0,0,0,0.38)', card: 'rgba(194,207,223,0.05)', event: 'rgba(0,0,0,0.22)', shadow: '0 0 0 4px rgba(0,0,0,0.62),0 0 0 5px #3b4450,0 20px 60px rgba(0,0,0,0.78)' },
-    D: { name: '绛宫', bg: 'linear-gradient(180deg,#2a1215 0%,#150a0c 100%)', solid: '#2a1215', border: '#6e3a3d', gold: '#e0b07a', text: '#f2ddd2', text2: '#cfa99d', dim: '#8f6a62', input: 'rgba(0,0,0,0.36)', card: 'rgba(224,176,122,0.05)', event: 'rgba(0,0,0,0.2)', shadow: '0 0 0 4px rgba(0,0,0,0.62),0 0 0 5px #6e3a3d,0 20px 60px rgba(0,0,0,0.8)' },
-    E: { name: '藕荷紫', bg: 'linear-gradient(180deg,#f2edf7 0%,#fbf8fd 100%)', solid: '#f2edf7', border: '#c4b2d6', gold: '#7d5a9e', text: '#31283b', text2: '#544764', dim: '#9c8aad', input: 'rgba(255,255,255,0.76)', card: 'rgba(125,90,158,0.05)', event: 'rgba(40,20,60,0.035)', shadow: '0 0 0 4px rgba(255,255,255,0.55),0 0 0 5px #c4b2d6,0 20px 60px rgba(50,20,80,0.2)' },
-    F: { name: '竹影', bg: 'linear-gradient(180deg,#10231a 0%,#08130e 100%)', solid: '#10231a', border: '#3f6b52', gold: '#a8d5a2', text: '#dcefe2', text2: '#a9c9b4', dim: '#688b74', input: 'rgba(0,0,0,0.36)', card: 'rgba(168,213,162,0.045)', event: 'rgba(0,0,0,0.2)', shadow: '0 0 0 4px rgba(0,0,0,0.62),0 0 0 5px #3f6b52,0 20px 60px rgba(0,0,0,0.78)' },
-    ST: { name: '跟随酒馆', bg: 'linear-gradient(180deg,rgba(20,20,20,.78),rgba(10,10,10,.86))', solid: '#141414', border: '#555', gold: '#c9a86a', text: '#e8e8e8', text2: '#c8c8c8', dim: '#8a8a8a', input: 'rgba(0,0,0,0.3)', card: 'rgba(255,255,255,0.05)', event: 'rgba(0,0,0,0.16)', shadow: '0 0 0 4px rgba(0,0,0,0.4),0 0 0 5px #555,0 20px 60px rgba(0,0,0,0.65)' }
+    A: {
+        name: '素笺墨痕',
+        bg: 'radial-gradient(circle at 18% 4%, rgba(255,255,255,.75), transparent 44%), repeating-linear-gradient(0deg, rgba(90,70,40,.035) 0 1px, transparent 1px 4px), linear-gradient(180deg,#f6efdf 0%,#e9dfc9 100%)',
+        solid: '#f6efdf', border: '#2a241d', gold: '#9d3024', text: '#29231c', text2: '#4a3f30', dim: '#7d6e5b',
+        input: 'rgba(255,255,255,.42)', card: 'rgba(255,255,255,.40)', event: 'rgba(42,36,29,.045)',
+        shadow: '0 0 0 4px rgba(42,36,29,.16),0 28px 60px rgba(0,0,0,.38)',
+        btnBg: 'rgba(255,255,255,.36)', btnColor: '#29231c', btnBorder: '#2a241d', btnRadius: '0px',
+        panelRadius: '0px', primaryBg: '#9d3024', primaryColor: '#f6efdf'
+    },
+    B: {
+        name: '朱阙金章',
+        bg: 'radial-gradient(circle at 50% -10%, rgba(227,189,99,.18), transparent 46%), repeating-linear-gradient(90deg, rgba(255,255,255,.018) 0 1px, transparent 1px 4px), linear-gradient(180deg,#3a1116 0%,#1d090c 100%)',
+        solid: '#3a1116', border: '#b99045', gold: '#e8c878', text: '#f0dfbe', text2: '#d8c49c', dim: '#b99a76',
+        input: 'rgba(12,5,6,.32)', card: 'rgba(255,226,166,.055)', event: 'rgba(201,162,75,.10)',
+        shadow: '0 0 0 4px rgba(201,162,75,.09),0 28px 60px rgba(0,0,0,.62)',
+        btnBg: 'rgba(255,226,166,.04)', btnColor: '#f0dfbe', btnBorder: '#b99045', btnRadius: '2px',
+        panelRadius: '4px', primaryBg: '#c9a24b', primaryColor: '#2a0d0f'
+    },
+    C: {
+        name: '青绿山河',
+        bg: 'radial-gradient(ellipse at 20% 0%, rgba(168,200,176,.16), transparent 50%), radial-gradient(ellipse at 80% 100%, rgba(60,110,100,.22), transparent 55%), linear-gradient(180deg,#143b3a 0%,#0a2225 100%)',
+        solid: '#143b3a', border: '#6e9a8a', gold: '#b9d4bd', text: '#e1eee2', text2: '#c2d9c9', dim: '#8eaa9a',
+        input: 'rgba(3,15,16,.34)', card: 'rgba(210,232,216,.045)', event: 'rgba(168,200,176,.08)',
+        shadow: '0 0 0 4px rgba(110,154,138,.10),0 28px 60px rgba(0,0,0,.58)',
+        btnBg: 'rgba(210,232,216,.04)', btnColor: '#e1eee2', btnBorder: '#6e9a8a', btnRadius: '1px',
+        panelRadius: '2px', primaryBg: '#a8c8b0', primaryColor: '#0c2521'
+    },
+    D: {
+        name: '玄夜鎏金',
+        bg: 'radial-gradient(circle at 50% 0%, rgba(201,162,75,.16), transparent 45%), radial-gradient(circle at 10% 90%, rgba(255,255,255,.035) 0 1px, transparent 1.6px), linear-gradient(180deg,#0d0c0a 0%,#050505 100%)',
+        solid: '#0d0c0a', border: '#8f7338', gold: '#ddbd6b', text: '#efe5c9', text2: '#d8c8a4', dim: '#9c8b68',
+        input: 'rgba(255,255,255,.035)', card: 'rgba(255,226,166,.035)', event: 'rgba(201,162,75,.055)',
+        shadow: '0 0 0 4px rgba(201,162,75,.07),0 28px 70px rgba(0,0,0,.75)',
+        btnBg: 'rgba(255,226,166,.03)', btnColor: '#efe5c9', btnBorder: '#8f7338', btnRadius: '0px',
+        panelRadius: '1px', primaryBg: '#c9a24b', primaryColor: '#0c0a07'
+    },
+    E: {
+        name: '竹影清霜',
+        bg: 'repeating-linear-gradient(90deg, transparent 0 24px, rgba(79,114,86,.045) 24px 25px, transparent 25px 48px), radial-gradient(circle at 20% 0%, rgba(255,255,255,.8), transparent 48%), linear-gradient(180deg,#e7ede2 0%,#d6e1d5 100%)',
+        solid: '#e7ede2', border: '#78927a', gold: '#466a50', text: '#26382d', text2: '#455949', dim: '#6c7f70',
+        input: 'rgba(255,255,255,.44)', card: 'rgba(255,255,255,.35)', event: 'rgba(79,114,86,.07)',
+        shadow: '0 0 0 4px rgba(120,146,122,.16),0 26px 58px rgba(25,45,35,.28)',
+        btnBg: 'rgba(255,255,255,.34)', btnColor: '#26382d', btnBorder: '#78927a', btnRadius: '2px',
+        panelRadius: '3px', primaryBg: '#4f7256', primaryColor: '#f3f8ef'
+    },
+    ST: {
+        name: '跟随酒馆',
+        bg: 'linear-gradient(180deg,rgba(20,20,20,.78),rgba(10,10,10,.86))',
+        solid: '#141414', border: '#555', gold: '#c9a86a', text: '#e8e8e8', text2: '#c8c8c8', dim: '#8a8a8a',
+        input: 'rgba(0,0,0,.3)', card: 'rgba(255,255,255,.05)', event: 'rgba(0,0,0,.16)',
+        shadow: '0 0 0 4px rgba(0,0,0,.4),0 0 0 5px #555,0 20px 60px rgba(0,0,0,.65)',
+        btnBg: 'rgba(255,255,255,.08)', btnColor: '#e8e8e8', btnBorder: '#555', btnRadius: '4px',
+        panelRadius: '4px', primaryBg: '#c9a86a', primaryColor: '#141414'
+    }
 };
-
 const DEFAULT_SETTINGS = {
     version: 2,
     enabled: true,
@@ -25,7 +71,7 @@ const DEFAULT_SETTINGS = {
     subApiKey: '',
     subApiModel: '',
     temperature: 0.6,
-    maxTokens: 2200,
+    maxTokens: 3200,
     debug: false,
     theme: 'A',
     injectEvents: true,
@@ -36,6 +82,11 @@ const DEFAULT_SETTINGS = {
     injectRelations: false,
     injectTimeline: false,
     pregnancyModule: false,
+    heirModule: false,
+    memorialModule: true,
+    secretModule: true,
+    calendarModule: true,
+    struggleModule: true,
     relationView: 'card',
     timelineRange: 20,
     foreshadowAi: true,
@@ -55,7 +106,7 @@ const PRESET_DEFAULT = {
 【省字原则】
 1. 没有变化就留空数组，不解释、不总结、不写正文。
 2. 只写具名人物；李承璟可以写。{{user}} 用实际名字，不要另立“圣上/陛下”当第二个人。
-3. 年龄取世界书或正文的具体数字，确实没有才写“不详”；不要每回重算。
+3. 年龄必须根据世界书、正文、身份、入宫年数、子女年龄等线索推测一个合理数字；没有明说也不要写“不详”，年龄只增不减。
 4. 事件名 4-8 字，定了就不改；进度只增不减，完成写 100。
 5. 伏笔一旦在本回被揭开、兑现、放弃，必须写“已回收”:true；不许留着了又当新伏笔。
 
@@ -82,7 +133,7 @@ const PRESET_DEFAULT = {
 【总原则】
 1. 只记录变化，不写静态总结；没有变化就留空数组。
 2. 人名用正文或世界书原名。李承璟可以写入 NPC状态、事件和关系；不要再把“圣上/陛下”当成另一个人。{{user}} 用实际名字。
-3. 年龄取具体数字，跨年由程序处理；确实没有才写“不详”。
+3. 年龄必须根据身份、经历、世界书和正文线索推测一个合理数字，不写“不详”；跨年由程序处理，年龄只增不减。
 4. 同一事件只更新进度和内容，不换名重开；进度 0-100，只增不减。
 5. 伏笔被揭开、兑现或放弃时，必须写“已回收”:true，并尽量在来源里写清是哪条线。
 6. 国家事件和邻国事件是“国事/邦交”，不是 NPC 状态栏：不要写某人的心情、位置、当前所做。
@@ -118,7 +169,7 @@ NPC状态 3-5 人；NPC事件 1-3 条；国家事件 1-2 条；邻国事件 1 �
 5. 每回合至少 1 条国家事件、1 条邻国事件；没有大事就写低强度但真实的朝议、边报、使节行程，不能让这两栏长期空着。
 6. 事件进度只增不减，完成写 100；完成的伏笔必须写“已回收”:true，不能留着当新线索。
 7. 允许写暗线、误判、反噬和代价；不要所有事都围着主角转，也不要把角色写成工具人。
-8. 人名与年龄以世界书/正文为准；不确定的年龄写“不详”，不要编数字。
+8. 人名以世界书/正文为准；年龄根据身份、入宫年数、子女年龄等线索推测一个合理数字，不写“不详”，只增不减。
 
 【模块手册】
 - NPC状态：本回有变化的核心人物 + 幕后关键人物，5-8 人。每人写心情、位置、年龄、身份、当前所做；当前所做要具体到动作。
@@ -164,6 +215,7 @@ const state = {
     ui: {
         tab: 'NPC状态',
         settingsTab: 'basic',
+        struggleFilter: '全部',
         panelOpen: false,
         settingsOpen: false,
         locked: false,
@@ -330,20 +382,134 @@ function eventKey(event) {
     return 'c:' + String(event && event.内容 ? event.内容 : '').replace(/\s+/g, '').slice(0, 16);
 }
 
+function normalizeKnower(item) {
+    if (typeof item === 'string') {
+        const name = cleanName(item);
+        return name ? { 人物: name, 程度: '知情' } : null;
+    }
+    if (!isPlainObject(item)) return null;
+    const name = cleanName(item.人物 || item.角色 || item.姓名);
+    if (!name) return null;
+    return { 人物: name, 程度: String(item.程度 || item.知道 || '知情').trim().slice(0, 20) || '知情' };
+}
+
+function normalizeKnowers(list) {
+    const map = new Map();
+    (Array.isArray(list) ? list : []).forEach(item => {
+        const knower = normalizeKnower(item);
+        if (knower && !map.has(knower.人物)) map.set(knower.人物, knower);
+    });
+    return Array.from(map.values());
+}
+
+function normalizeChain(list) {
+    const out = [];
+    (Array.isArray(list) ? list : []).forEach(item => {
+        if (typeof item === 'string') {
+            const name = cleanName(item);
+            if (name) out.push({ 人物: name, 版本: '' });
+            return;
+        }
+        if (!isPlainObject(item)) return;
+        const name = cleanName(item.人物 || item.角色 || item.姓名);
+        if (!name) return;
+        out.push({ 人物: name, 版本: String(item.版本 || item.说法 || '').trim().slice(0, 120) });
+    });
+    return out.slice(0, 12);
+}
+
 function normalizeRumor(item, round) {
     if (item === undefined || item === null) return null;
     if (typeof item === 'string') {
         const content = item.trim();
         if (!content) return null;
-        return { 内容: content.slice(0, 600), 伏笔: false, 回合: round || 0 };
+        return { 内容: content.slice(0, 600), 来源人物: '', 传播链: [], 可信度: '传闻', 伏笔: false, 回合: round || 0 };
     }
     if (!isPlainObject(item)) return null;
     const content = String(item.内容 || '').trim();
     if (!content) return null;
     return {
         内容: content.slice(0, 600),
+        来源人物: cleanName(item.来源人物 || item.来源 || '').slice(0, 40),
+        传播链: normalizeChain(item.传播链 || item.传播 || []),
+        可信度: String(item.可信度 || item.真假 || '传闻').trim().slice(0, 12) || '传闻',
         伏笔: isTrue(item.伏笔),
         回合: toInt(item.回合, round || 0) || 0
+    };
+}
+
+function normalizeMemorial(item, round) {
+    if (!isPlainObject(item)) return null;
+    const title = String(item.标题 || item.事由 || item.名称 || '').trim().slice(0, 60);
+    if (!title) return null;
+    const status = String(item.状态 || '待议').trim().slice(0, 10);
+    return {
+        标题: title,
+        上奏人: String(item.上奏人 || item.官员 || '').trim().slice(0, 40),
+        衙门: String(item.衙门 || item.部门 || '').trim().slice(0, 30),
+        事由: String(item.事由 || item.内容 || '').trim().slice(0, 600),
+        主张: String(item.主张 || item.请求 || '').trim().slice(0, 300),
+        反对: String(item.反对 || item.阻力 || '').trim().slice(0, 300),
+        状态: status || '待议',
+        结果: String(item.结果 || '').trim().slice(0, 300),
+        进度: getProgressNum(item),
+        回合: toInt(item.回合, round || 0) || 0,
+        更新回合: toInt(item.更新回合, round || 0) || 0
+    };
+}
+
+function normalizeSecret(item, round) {
+    if (!isPlainObject(item)) return null;
+    const content = String(item.内容 || item.秘密 || '').trim().slice(0, 600);
+    if (!content) return null;
+    const known = normalizeKnowers(item.知情者 || item.知道 || []);
+    const unknown = normalizeKnowers(item.不知情者 || item.不知道 || []);
+    const knownNames = new Set(known.map(k => k.人物));
+    return {
+        内容: content,
+        涉及: String(item.涉及 || item.人物 || '').trim().slice(0, 80),
+        知情者: known,
+        不知情者: unknown.filter(k => !knownNames.has(k.人物)),
+        证据: String(item.证据 || item.把柄 || '').trim().slice(0, 300),
+        来源: String(item.来源 || '').trim().slice(0, 30),
+        回合: toInt(item.回合, round || 0) || 0
+    };
+}
+
+function normalizeStruggle(item, round) {
+    if (!isPlainObject(item)) return null;
+    const name = String(item.事件名 || item.名称 || '').trim().slice(0, 40);
+    if (!name) return null;
+    const type = String(item.类型 || '').includes('政') ? '政斗' : '宫斗';
+    const level = String(item.烈度 || item.等级 || '低');
+    return {
+        类型: type,
+        事件名: name,
+        发起者: String(item.发起者 || '').trim().slice(0, 40),
+        目标: String(item.目标 || '').trim().slice(0, 80),
+        手段: String(item.手段 || '').trim().slice(0, 200),
+        烈度: /高/.test(level) ? '高' : /中/.test(level) ? '中' : '低',
+        阶段: String(item.阶段 || '策划').trim().slice(0, 10),
+        证据: String(item.证据 || '').trim().slice(0, 300),
+        知情者: normalizeKnowers(item.知情者 || []),
+        进度: getProgressNum(item),
+        结果: String(item.结果 || '').trim().slice(0, 300),
+        回合: toInt(item.回合, round || 0) || 0,
+        更新回合: toInt(item.更新回合, round || 0) || 0
+    };
+}
+
+function normalizeTime(raw) {
+    const t = isPlainObject(raw) ? raw : {};
+    return {
+        年号: String(t.年号 || '').trim().slice(0, 10),
+        年: Math.max(0, toInt(t.年, 0)),
+        月: clamp(toInt(t.月, 0), 0, 12),
+        日: clamp(toInt(t.日, 0), 0, 31),
+        节气: String(t.节气 || '').trim().slice(0, 10),
+        节日: String(t.节日 || '').trim().slice(0, 20),
+        时辰: String(t.时辰 || '').trim().slice(0, 10),
+        备注: String(t.备注 || '').trim().slice(0, 120)
     };
 }
 
@@ -434,20 +600,53 @@ function extractEra(text) {
     return year ? { 年号: '景衡', 年: year } : null;
 }
 
+function extractCalendar(text) {
+    const s = String(text || '');
+    const monthMatch = s.match(/([一二三四五六七八九十百零〇两\d]+)\s*月/);
+    const dayMatch = s.match(/(?:初|廿)([一二三四五六七八九十百零〇两\d]+)|([一二三四五六七八九十百零〇两\d]+)\s*[日号]/);
+    const month = monthMatch ? parseChineseNumber(monthMatch[1]) : 0;
+    const day = dayMatch ? parseChineseNumber(dayMatch[1] || dayMatch[2]) : 0;
+    if (!month && !day) return null;
+    return {
+        月: clamp(month, 0, 12),
+        日: clamp(day, 0, 31)
+    };
+}
+
 async function advanceYearFromMessage(messageId, text) {
     const era = extractEra(text);
-    if (!era) return false;
+    const calendar = extractCalendar(text);
+    if (!era && !calendar) return false;
     let data = getGroupData();
     if (!data) data = normalizeData({});
     const current = data.纪年 || { 年号: '', 年: 0 };
-    if (current.年 && era.年 <= current.年) return false;
-    if (current.年) {
-        const delta = era.年 - current.年;
-        Object.values(data.NPC状态 || {}).forEach(info => {
-            if (info && info.年龄) info.年龄 = incrementAge(info.年龄, delta);
-        });
+    let changed = false;
+
+    if (era && (!current.年 || era.年 > current.年)) {
+        if (current.年) {
+            const delta = era.年 - current.年;
+            Object.values(data.NPC状态 || {}).forEach(info => {
+                if (info && info.年龄) info.年龄 = incrementAge(info.年龄, delta);
+            });
+        }
+        data.纪年 = era;
+        data.时令 = mergeTime(data.时令, { 年号: era.年号, 年: era.年 });
+        changed = true;
     }
-    data.纪年 = era;
+
+    if (calendar) {
+        const year = era ? era : (data.纪年 || current);
+        data.时令 = mergeTime(data.时令, {
+            年号: year.年号 || '景衡',
+            年: year.年 || 0,
+            月: calendar.月,
+            日: calendar.日
+        });
+        if (data.时令.年) data.纪年 = { 年号: data.时令.年号 || '景衡', 年: data.时令.年 };
+        changed = true;
+    }
+
+    if (!changed) return false;
     await attachGroupData(messageId, data);
     try { renderAll(); } catch (e) { /* ignore */ }
     return true;
@@ -525,11 +724,24 @@ function normalizeData(raw) {
         })
         .filter(Boolean);
 
+    out.奏折 = (Array.isArray(out.奏折) ? out.奏折 : [])
+        .map(item => normalizeMemorial(item, 0))
+        .filter(Boolean);
+    out.秘辛 = (Array.isArray(out.秘辛) ? out.秘辛 : [])
+        .map(item => normalizeSecret(item, 0))
+        .filter(Boolean);
+    out.斗争 = (Array.isArray(out.斗争) ? out.斗争 : [])
+        .map(item => normalizeStruggle(item, 0))
+        .filter(Boolean);
+    out.时令 = normalizeTime(out.时令);
+
     out.伏笔 = dedupeForeshadow(Array.isArray(out.伏笔) ? out.伏笔 : []);
 
     out.孕事 = (Array.isArray(out.孕事) ? out.孕事 : [])
         .map(item => normalizePregnancy(item, 0))
         .filter(Boolean);
+
+    out.子嗣 = normalizeHeir(out.子嗣, 0);
 
     const era = isPlainObject(out.纪年) ? out.纪年 : {};
     out.纪年 = { 年号: String(era.年号 || '').trim().slice(0, 10), 年: Math.max(0, toInt(era.年, 0)) };
@@ -545,7 +757,13 @@ function hasContent(fresh) {
         const usable = Object.keys(fresh.NPC状态).some(name => !isBlacklisted(cleanName(name)));
         if (usable) return true;
     }
-    return ['NPC事件', '国家事件', '邻国事件', '流言', '书信', '关系', '伏笔', '孕事']
+    if (isPlainObject(fresh.时令) && Object.values(fresh.时令).some(value => value)) return true;
+    if (isPlainObject(fresh.子嗣)) {
+        const user = fresh.子嗣.用户 || {};
+        if (user.本回次数 || user.受孕判定 || user.孕期月 || user.状态 && user.状态 !== '未孕') return true;
+        if (Array.isArray(fresh.子嗣.子女) && fresh.子嗣.子女.length) return true;
+    }
+    return ['NPC事件', '国家事件', '邻国事件', '流言', '书信', '关系', '伏笔', '孕事', '奏折', '秘辛', '斗争']
         .some(key => Array.isArray(fresh[key]) && fresh[key].length > 0);
 }
 
@@ -586,10 +804,10 @@ function normalizeSettings(raw) {
     out.subApiKey = String(out.subApiKey || '').trim();
     out.subApiModel = String(out.subApiModel || '').trim();
     out.temperature = clamp(Number(out.temperature) || 0, 0, 2);
-    out.maxTokens = clamp(toInt(out.maxTokens, 2200), 200, 8000);
+    out.maxTokens = clamp(toInt(out.maxTokens, 3200), 200, 8000);
     out.debug = isTrue(out.debug);
     out.theme = THEMES[out.theme] ? out.theme : 'A';
-    ['injectEvents', 'injectNpc', 'injectRumors', 'injectLetters', 'injectForeshadow', 'injectRelations', 'injectTimeline', 'pregnancyModule', 'foreshadowAi', 'foreshadowUser', 'leadGroup'].forEach(key => {
+    ['injectEvents', 'injectNpc', 'injectRumors', 'injectLetters', 'injectForeshadow', 'injectRelations', 'injectTimeline', 'pregnancyModule', 'heirModule', 'foreshadowAi', 'foreshadowUser', 'leadGroup', 'memorialModule', 'secretModule', 'calendarModule', 'struggleModule'].forEach(key => {
         out[key] = out[key] !== false;
     });
     out.ballSize = clamp(toInt(out.ballSize, 50), 36, 84);
@@ -911,7 +1129,12 @@ function mergeRumors(oldList, newList, round) {
         const key = rumor.内容.replace(/\s+/g, '').slice(0, 30);
         if (seen.has(key)) {
             const old = out.find(r => r.内容.replace(/\s+/g, '').slice(0, 30) === key);
-            if (old && rumor.伏笔) old.伏笔 = true;
+            if (old) {
+                if (rumor.伏笔) old.伏笔 = true;
+                old.来源人物 = old.来源人物 || rumor.来源人物;
+                old.传播链 = mergeChain(old.传播链, rumor.传播链);
+                old.可信度 = rumor.可信度 && rumor.可信度 !== '传闻' ? rumor.可信度 : old.可信度;
+            }
             return;
         }
         seen.add(key);
@@ -940,6 +1163,119 @@ function mergeLetters(oldList, newList, round) {
         out.push(letter);
     });
     return out.slice(-30);
+}
+
+function mergeChain(oldChain, newChain) {
+    const map = new Map();
+    (Array.isArray(oldChain) ? oldChain : []).forEach(item => {
+        if (item && item.人物) map.set(item.人物, item);
+    });
+    (Array.isArray(newChain) ? newChain : []).forEach(item => {
+        if (!item || !item.人物) return;
+        const old = map.get(item.人物);
+        map.set(item.人物, { 人物: item.人物, 版本: item.版本 || (old && old.版本) || '' });
+    });
+    return Array.from(map.values());
+}
+
+function mergeMemorials(oldList, newList, round) {
+    const map = new Map();
+    (Array.isArray(oldList) ? oldList : []).forEach(item => {
+        const record = normalizeMemorial(item, 0);
+        if (record) map.set(record.标题, record);
+    });
+    (Array.isArray(newList) ? newList : []).forEach(item => {
+        const record = normalizeMemorial(item, round);
+        if (!record) return;
+        const old = map.get(record.标题);
+        if (!old) {
+            record.回合 = record.回合 || round;
+            record.更新回合 = round;
+            map.set(record.标题, record);
+            return;
+        }
+        const merged = Object.assign({}, old, record);
+        merged.回合 = old.回合 || round;
+        merged.更新回合 = round;
+        merged.进度 = Math.max(getProgressNum(old), getProgressNum(record));
+        merged.状态 = record.状态 || old.状态;
+        merged.结果 = record.结果 || old.结果;
+        map.set(record.标题, merged);
+    });
+    return Array.from(map.values());
+}
+
+function mergeSecrets(oldList, newList, round) {
+    const map = new Map();
+    (Array.isArray(oldList) ? oldList : []).forEach(item => {
+        const record = normalizeSecret(item, 0);
+        if (record) map.set(foreshadowKey(record.内容), record);
+    });
+    (Array.isArray(newList) ? newList : []).forEach(item => {
+        const record = normalizeSecret(item, round);
+        if (!record) return;
+        const key = foreshadowKey(record.内容);
+        const old = map.get(key);
+        if (!old) {
+            record.回合 = record.回合 || round;
+            map.set(key, record);
+            return;
+        }
+        const known = new Map(old.知情者.map(k => [k.人物, k]));
+        record.知情者.forEach(k => known.set(k.人物, k));
+        const knownNames = new Set(known.keys());
+        const unknown = new Map();
+        old.不知情者.concat(record.不知情者).forEach(k => {
+            if (!knownNames.has(k.人物)) unknown.set(k.人物, k);
+        });
+        old.知情者 = Array.from(known.values());
+        old.不知情者 = Array.from(unknown.values());
+        old.证据 = record.证据 || old.证据;
+        old.涉及 = record.涉及 || old.涉及;
+        old.回合 = old.回合 || round;
+        map.set(key, old);
+    });
+    return Array.from(map.values());
+}
+
+function mergeStruggles(oldList, newList, round) {
+    const map = new Map();
+    (Array.isArray(oldList) ? oldList : []).forEach(item => {
+        const record = normalizeStruggle(item, 0);
+        if (record) map.set(record.类型 + '|' + record.事件名, record);
+    });
+    (Array.isArray(newList) ? newList : []).forEach(item => {
+        const record = normalizeStruggle(item, round);
+        if (!record) return;
+        const key = record.类型 + '|' + record.事件名;
+        const old = map.get(key);
+        if (!old) {
+            record.回合 = record.回合 || round;
+            record.更新回合 = round;
+            map.set(key, record);
+            return;
+        }
+        const merged = Object.assign({}, old, record);
+        merged.回合 = old.回合 || round;
+        merged.更新回合 = round;
+        merged.进度 = Math.max(getProgressNum(old), getProgressNum(record));
+        merged.知情者 = normalizeKnowers(old.知情者.concat(record.知情者 || []));
+        merged.阶段 = record.阶段 || old.阶段;
+        merged.结果 = record.结果 || old.结果;
+        map.set(key, merged);
+    });
+    return Array.from(map.values());
+}
+
+function mergeTime(oldTime, freshTime) {
+    const old = normalizeTime(oldTime);
+    const fresh = normalizeTime(freshTime);
+    const out = Object.assign({}, old);
+    Object.entries(fresh).forEach(([key, value]) => {
+        if (value !== '' && value !== 0 && value !== null && value !== undefined) out[key] = value;
+    });
+    if (fresh.年 && fresh.年 !== old.年) out.年 = fresh.年;
+    return out;
 }
 
 function mergeRelations(oldList, newList) {
@@ -1039,6 +1375,80 @@ function mergePregnancies(oldList, newList, round) {
     return Array.from(map.values());
 }
 
+function normalizeHeirUser(raw, round) {
+    const user = isPlainObject(raw) ? raw : {};
+    const status = String(user.状态 || '未孕').trim().slice(0, 12);
+    const month = clamp(toInt(user.孕期月 !== undefined ? user.孕期月 : user.孕月, 0), 0, 10);
+    return {
+        内射次数: Math.max(0, toInt(user.内射次数 !== undefined ? user.内射次数 : user.累计次数, 0)),
+        本回次数: Math.max(0, toInt(user.本回次数 !== undefined ? user.本回次数 : user.本回, 0)),
+        受孕判定: String(user.受孕判定 || user.受孕 || '未定').trim().slice(0, 12),
+        孕期月: month,
+        状态: status || '未孕',
+        发现: normalizeKnowers(user.发现 || user.知情者 || []),
+        备注: String(user.备注 || '').trim().slice(0, 300),
+        回合: toInt(user.回合, round || 0) || 0
+    };
+}
+
+function normalizeChild(item, round) {
+    if (!isPlainObject(item)) return null;
+    const name = String(item.姓名 || item.名字 || item.称呼 || '').trim().slice(0, 40);
+    if (!name) return null;
+    const gender = /女/.test(String(item.性别 || '')) ? '女' : '男';
+    const identity = String(item.身份 || item.位份 || (gender === '女' ? '皇女' : '皇子')).trim().slice(0, 20);
+    return {
+        姓名: name,
+        性别: gender,
+        身份: identity,
+        生母: String(item.生母 || item.母亲 || '').trim().slice(0, 40),
+        排行: Math.max(0, toInt(item.排行 || item.序齿, 0)),
+        出生: String(item.出生 || item.生辰 || '').trim().slice(0, 60),
+        状态: String(item.状态 || '在世').trim().slice(0, 20),
+        备注: String(item.备注 || '').trim().slice(0, 200),
+        回合: toInt(item.回合, round || 0) || 0
+    };
+}
+
+function normalizeHeir(raw, round) {
+    const obj = isPlainObject(raw) ? raw : {};
+    return {
+        用户: normalizeHeirUser(obj.用户 || obj.user || {}, round),
+        子女: (Array.isArray(obj.子女) ? obj.子女 : [])
+            .map(item => normalizeChild(item, round))
+            .filter(Boolean)
+    };
+}
+
+function mergeHeir(oldHeir, freshHeir, round) {
+    const old = normalizeHeir(oldHeir, 0);
+    const fresh = normalizeHeir(freshHeir, round);
+    const user = Object.assign({}, old.用户);
+    const add = fresh.用户.本回次数 || 0;
+    user.内射次数 = Math.max(old.用户.内射次数 + add, fresh.用户.内射次数);
+    user.本回次数 = add;
+    if (fresh.用户.受孕判定 && fresh.用户.受孕判定 !== '未定') user.受孕判定 = fresh.用户.受孕判定;
+    if (fresh.用户.孕期月) user.孕期月 = Math.max(user.孕期月 || 0, fresh.用户.孕期月);
+    if (fresh.用户.状态 && fresh.用户.状态 !== '未孕') user.状态 = fresh.用户.状态;
+    if (fresh.用户.备注) user.备注 = fresh.用户.备注;
+    user.发现 = normalizeKnowers(old.用户.发现.concat(fresh.用户.发现));
+    user.回合 = old.用户.回合 || round;
+
+    const map = new Map();
+    old.子女.forEach(item => map.set(item.姓名 + '|' + (item.生母 || ''), item));
+    fresh.子女.forEach(item => {
+        const key = item.姓名 + '|' + (item.生母 || '');
+        const prev = map.get(key);
+        if (!prev) {
+            item.回合 = item.回合 || round;
+            map.set(key, item);
+            return;
+        }
+        Object.assign(prev, item);
+    });
+    return { 用户: user, 子女: Array.from(map.values()) };
+}
+
 function derivePregnancies(npcState, list, round) {
     const map = new Map();
     (Array.isArray(list) ? list : []).forEach(item => {
@@ -1102,7 +1512,9 @@ function mergeGroupData(oldData, fresh) {
             if (!Object.keys(clean).length) return;
             const oldInfo = out.NPC状态[name] || {};
             const mergedInfo = Object.assign({}, oldInfo, clean);
-            if (oldInfo.年龄 && clean.年龄) {
+            if (oldInfo.年龄 && (!clean.年龄 || /不详|未知/.test(clean.年龄))) {
+                mergedInfo.年龄 = oldInfo.年龄;
+            } else if (oldInfo.年龄 && clean.年龄) {
                 const oldAge = ageNumber(oldInfo.年龄);
                 const newAge = ageNumber(clean.年龄);
                 if (oldAge && newAge && newAge < oldAge) mergedInfo.年龄 = oldInfo.年龄;
@@ -1117,12 +1529,19 @@ function mergeGroupData(oldData, fresh) {
     });
 
     out.流言 = mergeRumors(out.流言, fresh.流言, round);
+    out.奏折 = mergeMemorials(out.奏折, fresh.奏折, round);
+    out.秘辛 = mergeSecrets(out.秘辛, fresh.秘辛, round);
+    out.斗争 = mergeStruggles(out.斗争, fresh.斗争, round);
+    out.时令 = mergeTime(out.时令, fresh.时令);
     out.书信 = mergeLetters(out.书信, fresh.书信, round);
     out.关系 = mergeRelations(out.关系, fresh.关系);
     out.伏笔 = mergeForeshadow(out.伏笔, fresh.伏笔);
     out.孕事 = mergePregnancies(out.孕事, fresh.孕事, round);
     if (getSettings().pregnancyModule) {
         out.孕事 = derivePregnancies(out.NPC状态, out.孕事, round);
+    }
+    if (getSettings().heirModule) {
+        out.子嗣 = mergeHeir(out.子嗣, fresh.子嗣, round);
     }
 
     if (getSettings().foreshadowAi) {
@@ -1179,6 +1598,11 @@ function buildEventContext() {
     if (data.纪年 && data.纪年.年) {
         push(`[纪年] ${data.纪年.年号 || ''}${data.纪年.年}年`);
     }
+    if (data.时令 && (data.时令.月 || data.时令.节气 || data.时令.节日)) {
+        const t = data.时令;
+        const date = [t.年号 && t.年 ? t.年号 + t.年 + '年' : '', t.月 ? t.月 + '月' : '', t.日 ? t.日 + '日' : ''].filter(Boolean).join('');
+        push(`[时令] ${date}${t.节气 ? '·' + t.节气 : ''}${t.节日 ? '·' + t.节日 : ''}${t.时辰 ? '·' + t.时辰 : ''}`);
+    }
     if (s.injectEvents) {
         ['NPC事件', '国家事件', '邻国事件'].forEach(key => {
             (Array.isArray(data[key]) ? data[key] : []).forEach(event => {
@@ -1187,6 +1611,14 @@ function buildEventContext() {
                 const domain = event.领域 ? '·' + event.领域 : '';
                 if (name) push(`[${key.replace('事件', '')}${domain}] ${name}（${getProgressNum(event)}%）`);
             });
+        });
+    }
+    if (s.injectEvents) {
+        (Array.isArray(data.奏折) ? data.奏折 : []).filter(m => !['准奏', '驳回', '已结'].includes(m.状态)).forEach(m => {
+            if (m.标题) push(`[奏折·待议] ${m.标题}${m.上奏人 ? '（' + m.上奏人 + '）' : ''}`);
+        });
+        (Array.isArray(data.斗争) ? data.斗争 : []).filter(x => getProgressNum(x) < 100).forEach(x => {
+            if (x.事件名) push(`[${x.类型 || '斗争'}] ${x.事件名}（${x.阶段 || '进行中'}）`);
         });
     }
     if (s.injectTimeline) {
@@ -1257,8 +1689,46 @@ function buildEventContext() {
     return `\n\n【当前剧情线索】（第 ${data.最后更新回合 || 0} 回，仅供续写参考；没有变化可忽略）\n${lines.join('\n')}`;
 }
 
+function buildExtraModulesPrompt() {
+    const s = getSettings();
+    const off = [];
+    if (!s.memorialModule) off.push('奏折');
+    if (!s.secretModule) off.push('秘辛');
+    if (!s.calendarModule) off.push('时令');
+    if (!s.struggleModule) off.push('斗争');
+    if (!s.heirModule) off.push('子嗣');
+
+    return `\n\n【扩展模块：和上面的 JSON 合并，不是另起一个对象】
+- 奏折（1-3 条）：朝堂公文，不是普通事件。写清标题、上奏人、衙门、事由、主张、反对、状态（待议/留中/准奏/驳回/已结）。没有就写空数组。
+- 秘辛（0-2 条）：只记值得藏的 secret。内容、涉及谁、证据/把柄。知情者写“谁、知道多少”（全知/部分/怀疑/只知片段）；不知情者写“谁还不知道”。**李承璟和{{user}}也可以知道或不知道，照实写进知情者/不知情者，不要漏掉他们。**
+- 流言（0-2 条）：除了内容，还要写来源人物、传播链（谁传给谁、版本变成什么）、可信度（真/半真/假/未知）。传播链 2-4 人即可。
+- 时令：只有正文出现明确日期、节气、节日、时辰时才更新。写年号、年、月、日、节气、节日、时辰、备注；没有就留空对象。
+- 斗争（0-2 条）：宫斗或政斗。只在有明确动机、利益冲突、行动条件时记录；不要每回硬造。写类型（宫斗/政斗）、事件名、发起者、目标、手段、烈度（低/中/高）、阶段（策划/执行/调查/反制/收场）、证据、知情者、进度、结果。结果开放，不保证成功；不替{{user}}决定中计、受伤、失宠或站队；信息有限，不知道的人不要写成知道。
+- 子嗣（仅在模块开启时）：只写{{user}}相关。用户字段：本回次数（只写本回新增，累计由程序加）、受孕判定（未定/可能/已确认/未受孕）、孕期月（0-10）、状态（未孕/有孕/临盆/已生产/小产）、发现（谁逐渐知道、知道多少）、备注。只做记录，不写露骨过程，不替{{user}}决定感受、是否留下或是否生产。
+- 子女：只在出生后写。姓名、性别、身份（太子/太女/王爷/公主/皇子/皇女）、生母、排行、出生、状态（在世/夭折/过继）、备注；不要提前写未出生孩子的性别和封号。
+  · 孕月建议只作参考：1-3 月防不稳，4-6 月显怀与安胎，7-8 月备产，9-10 月临盆；不要写成医学诊断。
+  · 宫斗烈度：低=口舌、份例、礼仪刁难；中=收买宫人、造谣、栽赃；高=皇嗣、巫蛊、谋逆，必须有充分铺垫。
+  · 政斗烈度：低=朝议分歧、考核、调任；中=弹劾、财政亏空、边境摩擦；高=战争、谋逆、继承危机，必须符合国力与权限。
+  · 调查只能通过宫人、记录、物证、太医院、御史等合理渠道；不保证查明，也不保证定错人。
+
+【连续性锁定】
+- 角色已经走到终点（死亡、退位、登基、成婚、失势、离场、结局已定）就保持终点状态，不得写回中途，不得让他重新经历已经走完的剧情。
+- 事件进度已经 100、已收场或已结束，就只写余波、后果和旁人反应；不要换一个名字重新开局，也不要把终局内容改回进行中。
+- 同一事件继续用同一个事件名；进度只增不减。已经完成的伏笔必须回收，不能重新变成未解。
+- 如果正文是回忆/倒叙，只把它当回忆，不改当前时间线的终点状态。
+
+【扩展字段】
+"奏折":[{"标题":"","上奏人":"","衙门":"","事由":"","主张":"","反对":"","状态":"待议","结果":"","进度":0}],
+"秘辛":[{"内容":"","涉及":"","知情者":[{"人物":"","程度":"部分"}],"不知情者":[""],"证据":"","来源":""}],
+"流言":[{"内容":"","来源人物":"","传播链":[{"人物":"","版本":""}],"可信度":"未知","伏笔":false}],
+"时令":{"年号":"","年":0,"月":0,"日":0,"节气":"","节日":"","时辰":"","备注":""},
+"斗争":[{"类型":"宫斗","事件名":"","发起者":"","目标":"","手段":"","烈度":"低","阶段":"策划","证据":"","知情者":[{"人物":"","程度":"部分"}],"进度":0,"结果":""}],
+"子嗣":{"用户":{"本回次数":0,"受孕判定":"未定","孕期月":0,"状态":"未孕","发现":[{"人物":"","程度":""}],"备注":""},"子女":[{"姓名":"","性别":"男","身份":"皇子","生母":"","排行":1,"出生":"","状态":"在世","备注":""}]}
+${off.length ? '【本回关闭】' + off.join('、') + ' 对应字段留空，不要输出。' : ''}`;
+}
+
 function wrapSubPrompt(core) {
-    return core + buildEventContext() + `\n\n【输出格式（必须遵守）】
+    return core + buildExtraModulesPrompt() + buildEventContext() + `\n\n【输出格式（必须遵守）】
 只输出一个合法 JSON 对象，不要输出解释、前后缀或 Markdown 代码块。`;
 }
 
@@ -1940,7 +2410,7 @@ const CSS = `
     white-space: nowrap;
 }
 .lx-tab:nth-child(4n) { border-right: none; }
-.lx-tab:nth-child(n+9) { border-bottom: none; }
+.lx-tab:nth-child(n+11) { border-bottom: none; }
 .lx-tab:last-child { border-right: none; }
 .lx-tab:hover { color: var(--lx-gold); }
 .lx-tab.active { color: var(--lx-gold); background: var(--lx-card-bg); font-weight: 700; }
@@ -2438,6 +2908,40 @@ const CSS = `
 .lx-preg-month { color: var(--lx-gold); font-size: 12px; margin-left: 8px; }
 .lx-preg-status { color: var(--lx-text2); font-size: 12px; margin-top: 4px; }
 .lx-preg-note { color: var(--lx-dim); font-size: 11px; margin-top: 3px; line-height: 1.5; }
+.lx-heir-user {
+    padding: 11px 12px;
+    margin-bottom: 10px;
+    border: 1px solid var(--lx-border);
+    border-left: 3px solid var(--lx-gold);
+    background: var(--lx-card-bg);
+}
+.lx-heir-title {
+    display: inline-block;
+    padding: 2px 8px;
+    margin-bottom: 8px;
+    border: 1px solid var(--lx-border);
+    color: var(--lx-gold);
+    font-size: 11px;
+    letter-spacing: 2px;
+}
+.lx-heir-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+.lx-heir-stats div { padding: 6px 5px; border: 1px solid var(--lx-border); background: var(--lx-event-bg); text-align: center; }
+.lx-heir-stats span { display: block; color: var(--lx-dim); font-size: 9px; }
+.lx-heir-stats b { display: block; margin-top: 2px; color: var(--lx-gold); font-size: 14px; font-weight: 400; }
+.lx-heir-status { margin-top: 7px; color: var(--lx-gold); font-size: 12px; letter-spacing: 1px; }
+.lx-heir-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 6px; font-size: 11px; color: var(--lx-text2); }
+.lx-heir-line b { margin-right: 4px; color: var(--lx-gold); font-weight: 400; }
+.lx-heir-tip { margin-top: 8px; padding-top: 7px; border-top: 1px dashed var(--lx-border); color: var(--lx-dim); font-size: 10.5px; line-height: 1.6; }
+.lx-heir-child {
+    padding: 9px 11px;
+    margin-bottom: 7px;
+    border: 1px solid var(--lx-border);
+    border-left: 3px solid var(--lx-gold);
+    background: var(--lx-card-bg);
+}
+.lx-heir-child-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.lx-heir-child-name { color: var(--lx-gold); font-size: 13px; letter-spacing: 1px; }
+.lx-heir-child-title { padding: 0 5px; border: 1px solid var(--lx-border); color: var(--lx-text2); font-size: 9.5px; }
 
 /* 搜索命中/无结果 */
 .lx-search-empty { text-align: center; color: var(--lx-dim); font-size: 12px; padding: 28px 10px; font-style: italic; }
@@ -2447,14 +2951,19 @@ const CSS = `
 
 /* 方正、双线框、标题带框的外观 */
 #lx-root {
-    font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
+    font-family: var(--lx-font, "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif);
 }
 #lx-panel, #lx-settings {
-    border-radius: 4px;
+    border-radius: var(--lx-panel-radius, 4px);
     border: 1px solid var(--lx-border);
-    background:
+    background-color: var(--lx-bg-solid);
+    background-image:
+        var(--lx-bg-image, none),
         linear-gradient(180deg, var(--lx-card-bg), transparent 28%),
         var(--lx-bg);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
     box-shadow:
         inset 0 0 0 1px rgba(255,255,255,0.35),
         0 0 0 4px var(--lx-card-bg),
@@ -2512,7 +3021,7 @@ const CSS = `
     background: transparent;
 }
 .lx-tab:nth-child(5n) { border-right: none !important; }
-.lx-tab:nth-child(n+6) { border-bottom: none !important; }
+.lx-tab:nth-child(n+11) { border-bottom: none !important; }
 .lx-tab.active {
     background: var(--lx-card-bg);
     color: var(--lx-gold);
@@ -2630,7 +3139,54 @@ const CSS = `
 .lx-progress-fill { border-radius: 0; }
 .lx-completed, .lx-fold { border-radius: 2px; }
 .lx-rumor { border-radius: 2px; background: var(--lx-card-bg); border-left: 3px solid var(--lx-gold); }
+.lx-rumor::before, .lx-rumor::after { content: none; }
 .lx-letter { border-radius: 3px; background: var(--lx-card-bg); }
+.lx-rumor-content { line-height: 1.8; }
+.lx-rumor-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 5px; color: var(--lx-dim); font-size: 10.5px; }
+.lx-rumor-chain { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--lx-border); }
+.lx-rumor-node { padding: 1px 6px; border: 1px solid var(--lx-border); background: var(--lx-event-bg); font-size: 10.5px; }
+.lx-rumor-node small { display: block; color: var(--lx-dim); font-size: 9px; }
+.lx-rumor-arrow { color: var(--lx-gold); }
+.lx-memorial, .lx-secret, .lx-struggle {
+    position: relative;
+    border: 1px solid var(--lx-border);
+    border-left: 3px solid var(--lx-gold);
+    border-radius: 2px;
+    background: var(--lx-card-bg);
+    padding: 10px 12px;
+    margin-bottom: 9px;
+}
+.lx-memorial.done { opacity: 0.78; }
+.lx-memorial-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.lx-memorial-title { font-weight: 700; color: var(--lx-gold); }
+.lx-memorial-status { flex: none; padding: 1px 6px; border: 1px solid var(--lx-gold); color: var(--lx-gold); font-size: 10px; }
+.lx-memorial-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 5px 0; color: var(--lx-dim); font-size: 10.5px; }
+.lx-memorial-body { line-height: 1.75; }
+.lx-memorial-grid { display: grid; gap: 4px; margin-top: 6px; font-size: 11.5px; }
+.lx-memorial-grid b, .lx-secret-line b, .lx-struggle-line b { display: inline-block; min-width: 32px; margin-right: 5px; color: var(--lx-gold); font-weight: 400; }
+.lx-memorial-result, .lx-secret-evidence, .lx-struggle-result { margin-top: 5px; color: var(--lx-text2); font-size: 11px; }
+.lx-memorial-actions { display: flex; gap: 5px; margin-top: 7px; }
+.lx-secret-content { line-height: 1.8; }
+.lx-secret-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 6px; font-size: 11.5px; }
+.lx-secret-chip { padding: 1px 6px; border: 1px solid var(--lx-border); background: var(--lx-event-bg); font-size: 10.5px; }
+.lx-secret-chip.known { border-color: var(--lx-gold); color: var(--lx-gold); }
+.lx-secret-none { color: var(--lx-dim); }
+.lx-struggle-filter { display: flex; gap: 5px; margin-bottom: 8px; }
+.lx-struggle-filter .lx-mini-btn.active { border-color: var(--lx-gold); color: var(--lx-gold); }
+.lx-struggle-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.lx-struggle-type { padding: 1px 6px; border: 1px solid var(--lx-gold); color: var(--lx-gold); font-size: 10px; }
+.lx-struggle-name { font-weight: 700; }
+.lx-struggle-level { margin-left: auto; color: var(--lx-dim); font-size: 10px; }
+.lx-struggle.level-高 { border-left-color: #c0392b; }
+.lx-struggle.level-中 { border-left-color: #c98b2e; }
+.lx-struggle-line { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; margin-top: 5px; font-size: 11.5px; }
+.lx-struggle .lx-arrow { color: var(--lx-gold); }
+.lx-time-big { padding: 10px 12px; border: 1px solid var(--lx-border); background: var(--lx-card-bg); color: var(--lx-gold); font-size: 14px; letter-spacing: 2px; text-align: center; }
+.lx-time-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 8px; }
+.lx-time-cell { padding: 8px 10px; border: 1px solid var(--lx-border); background: var(--lx-card-bg); }
+.lx-time-cell span { display: block; color: var(--lx-dim); font-size: 10px; }
+.lx-time-cell b { font-weight: 400; font-size: 12px; }
+.lx-time-hint { margin-top: 10px; color: var(--lx-dim); font-size: 11px; text-align: center; }
 .lx-footer {
     padding: 9px 8px calc(9px + env(safe-area-inset-bottom));
     gap: 5px;
@@ -2638,20 +3194,23 @@ const CSS = `
     background: var(--lx-card-bg);
 }
 .lx-btn {
-    border-radius: 2px;
+    border-radius: var(--lx-btn-radius, 2px);
     padding: 8px 3px;
     font-size: 11.5px;
     font-weight: 600;
-    background: linear-gradient(180deg, var(--lx-card-bg), transparent);
+    background: var(--lx-btn-bg, linear-gradient(180deg, var(--lx-card-bg), transparent));
+    color: var(--lx-btn-color, var(--lx-text));
+    border-color: var(--lx-btn-border, var(--lx-border));
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.25);
 }
 .lx-footer .lx-btn:first-child {
-    background: var(--lx-gold);
-    color: var(--lx-bg-solid);
-    border-color: var(--lx-gold);
+    background: var(--lx-btn-primary-bg, var(--lx-gold));
+    color: var(--lx-btn-primary-color, var(--lx-bg-solid));
+    border-color: var(--lx-btn-border, var(--lx-gold));
+    border-radius: var(--lx-btn-radius, 2px);
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.25);
 }
-.lx-mini-btn { border-radius: 2px; }
+.lx-mini-btn { border-radius: var(--lx-btn-radius, 2px); background: var(--lx-btn-bg, transparent); color: var(--lx-btn-color, var(--lx-text)); border-color: var(--lx-btn-border, var(--lx-border)); }
 .lx-field {
     border: 1px solid var(--lx-border);
     border-radius: 2px;
@@ -2708,7 +3267,7 @@ const CSS = `
         height: calc(100% - 56px);
         max-height: 760px;
         transform: none;
-        border-radius: 4px;
+        border-radius: var(--lx-panel-radius, 4px);
         border: 1px solid var(--lx-border);
         backdrop-filter: none;
         -webkit-backdrop-filter: none;
@@ -2727,7 +3286,7 @@ const CSS = `
         border-bottom: 1px solid var(--lx-border);
     }
     .lx-tab:nth-child(5n) { border-right: none; }
-    .lx-tab:nth-child(n+6) { border-bottom: none; }
+    .lx-tab:nth-child(n+11) { border-bottom: none; }
     .lx-tab:last-child { border-right: none; }
     .lx-tab.active::after { left: 18%; right: 18%; bottom: -1px; }
     .lx-content { padding: 10px; }
@@ -2749,7 +3308,7 @@ const CSS = `
     height: calc(100% - 56px);
     max-height: 760px;
     transform: none;
-    border-radius: 4px;
+    border-radius: var(--lx-panel-radius, 4px);
     border: 1px solid var(--lx-border);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
@@ -2803,16 +3362,21 @@ const SHELL_HTML = `
             <div class="lx-tab" role="tab" aria-selected="false" data-tab="NPC事件">NPC事件<span class="lx-tab-num"></span></div>
             <div class="lx-tab" role="tab" aria-selected="false" data-tab="国家事件">国家事件<span class="lx-tab-num"></span></div>
             <div class="lx-tab" role="tab" aria-selected="false" data-tab="邻国事件">邻国事件<span class="lx-tab-num"></span></div>
+            <div class="lx-tab" role="tab" aria-selected="false" data-tab="奏折">奏折<span class="lx-tab-num"></span></div>
+            <div class="lx-tab" role="tab" aria-selected="false" data-tab="秘辛">秘辛<span class="lx-tab-num"></span></div>
             <div class="lx-tab" role="tab" aria-selected="false" data-tab="流言">流言<span class="lx-tab-num"></span></div>
+            <div class="lx-tab" role="tab" aria-selected="false" data-tab="斗争">斗争<span class="lx-tab-num"></span></div>
             <div class="lx-tab" role="tab" aria-selected="false" data-tab="书信">书信<span class="lx-tab-num"></span></div>
+            <div class="lx-tab" role="tab" aria-selected="false" data-tab="时令">时令<span class="lx-tab-num"></span></div>
             <div class="lx-tab" role="tab" aria-selected="false" data-tab="时间线">时间线<span class="lx-tab-num"></span></div>
             <div class="lx-tab" role="tab" aria-selected="false" data-tab="关系图">关系图<span class="lx-tab-num"></span></div>
             <div class="lx-tab" role="tab" aria-selected="false" data-tab="伏笔">伏笔<span class="lx-tab-num"></span></div>
             <div class="lx-tab" role="tab" aria-selected="false" data-tab="孕事">孕事<span class="lx-tab-num"></span></div>
+            <div class="lx-tab" role="tab" aria-selected="false" data-tab="子嗣">子嗣<span class="lx-tab-num"></span></div>
 
         </div>
         <div class="lx-search">
-            <input id="lx-search-input" class="lx-input" type="search" placeholder="搜索人物 / 事件 / 流言…" autocomplete="off">
+            <input id="lx-search-input" class="lx-input" type="search" placeholder="搜索人物 / 事件 / 秘辛 / 奏折…" autocomplete="off">
             <button type="button" class="lx-mini-btn" data-action="search-clear">清除</button>
         </div>
         <div class="lx-content">
@@ -2820,12 +3384,17 @@ const SHELL_HTML = `
             <div class="lx-panel-tab" role="tabpanel" data-panel="NPC事件"></div>
             <div class="lx-panel-tab" role="tabpanel" data-panel="国家事件"></div>
             <div class="lx-panel-tab" role="tabpanel" data-panel="邻国事件"></div>
+            <div class="lx-panel-tab" role="tabpanel" data-panel="奏折"></div>
+            <div class="lx-panel-tab" role="tabpanel" data-panel="秘辛"></div>
             <div class="lx-panel-tab" role="tabpanel" data-panel="流言"></div>
+            <div class="lx-panel-tab" role="tabpanel" data-panel="斗争"></div>
             <div class="lx-panel-tab" role="tabpanel" data-panel="书信"></div>
+            <div class="lx-panel-tab" role="tabpanel" data-panel="时令"></div>
             <div class="lx-panel-tab" role="tabpanel" data-panel="时间线"></div>
             <div class="lx-panel-tab" role="tabpanel" data-panel="关系图"></div>
             <div class="lx-panel-tab" role="tabpanel" data-panel="伏笔"></div>
             <div class="lx-panel-tab" role="tabpanel" data-panel="孕事"></div>
+            <div class="lx-panel-tab" role="tabpanel" data-panel="子嗣"></div>
 
         </div>
         <div class="lx-footer">
@@ -2861,10 +3430,61 @@ function readStTheme() {
     const border = read('--SmartThemeBorderColor') || 'rgba(255,255,255,0.18)';
     const tint = read('--SmartThemeBlurTintColor') || 'rgba(20,20,20,0.78)';
     let bodyBg = '';
+    let font = '';
     try { bodyBg = bodyStyle && bodyStyle.backgroundColor && bodyStyle.backgroundColor !== 'rgba(0, 0, 0, 0)' ? bodyStyle.backgroundColor : ''; } catch (e) { /* ignore */ }
-    // 酒馆的 tint 可能是半透明甚至全透明；叠一层底色，避免面板透出后面的聊天文字。
+    try { font = (bodyStyle && bodyStyle.fontFamily) || ''; } catch (e) { /* ignore */ }
+
+    // 背景图优先从聊天区/消息区找，很多酒馆主题把图放在 #chat 或 .mes 上，而不是 body。
+    let bgImage = 'none';
+    const candidates = [doc.body, doc.querySelector('#bg1'), doc.querySelector('#bg2'), doc.querySelector('#background'), doc.querySelector('#chat'), doc.querySelector('#sheld'), doc.querySelector('.mes'), doc.querySelector('#top-bar')];
+    for (const el of candidates) {
+        if (!el) continue;
+        try {
+            const style = win.getComputedStyle(el);
+            const image = style && style.backgroundImage;
+            if (image && image !== 'none' && image !== 'initial') { bgImage = image; break; }
+        } catch (e) { /* ignore */ }
+    }
+
+    // 按钮跟酒馆的按钮样式：底色/渐变、文字色、边框、圆角。
+    let btnBg = 'rgba(255,255,255,0.08)';
+    let btnColor = text;
+    let btnBorder = border;
+    let btnRadius = '4px';
+    try {
+        const btn = doc.querySelector('#send_but, .menu_button, button');
+        if (btn) {
+            const bs = win.getComputedStyle(btn);
+            const bg = bs.backgroundColor && bs.backgroundColor !== 'rgba(0, 0, 0, 0)' ? bs.backgroundColor : '';
+            const bgImg = bs.backgroundImage && bs.backgroundImage !== 'none' ? bs.backgroundImage : '';
+            btnBg = bgImg || bg || btnBg;
+            btnColor = bs.color || btnColor;
+            btnBorder = bs.borderColor || btnBorder;
+            btnRadius = bs.borderRadius || btnRadius;
+        }
+    } catch (e) { /* ignore */ }
+
+    let cardBg = 'rgba(255,255,255,0.05)';
+    let inputBg = 'rgba(0,0,0,0.3)';
+    let panelRadius = '4px';
+    try {
+        const mes = doc.querySelector('.mes');
+        if (mes) {
+            const ms = win.getComputedStyle(mes);
+            if (ms.backgroundColor && ms.backgroundColor !== 'rgba(0, 0, 0, 0)') cardBg = ms.backgroundColor;
+            if (ms.borderRadius && ms.borderRadius !== '0px') panelRadius = ms.borderRadius;
+        }
+        const input = doc.querySelector('#send_textarea, textarea');
+        if (input) {
+            const is = win.getComputedStyle(input);
+            if (is.backgroundColor && is.backgroundColor !== 'rgba(0, 0, 0, 0)') inputBg = is.backgroundColor;
+        }
+    } catch (e) { /* ignore */ }
+
+    // 酒馆的 tint 可能是半透明甚至全透明；叠一层底色 + 背景图，避免面板透出聊天文字。
     const base = bodyBg || '#141414';
     const tintLayer = tint.includes('gradient') ? tint : `linear-gradient(180deg, ${tint}, ${tint})`;
+    const backgroundImage = bgImage !== 'none' ? `${tintLayer}, ${bgImage}` : 'none';
     return {
         name: '跟随酒馆',
         bg: `${tintLayer}, ${base}`,
@@ -2874,10 +3494,19 @@ function readStTheme() {
         text,
         text2: text,
         dim: border,
-        input: 'rgba(0,0,0,0.3)',
-        card: 'rgba(255,255,255,0.05)',
+        input: inputBg,
+        card: cardBg,
         event: 'rgba(0,0,0,0.16)',
-        shadow: `0 0 0 4px rgba(0,0,0,0.35),0 0 0 5px ${border},0 20px 60px rgba(0,0,0,0.55)`
+        shadow: `0 0 0 4px rgba(0,0,0,0.35),0 0 0 5px ${border},0 20px 60px rgba(0,0,0,0.55)`,
+        image: backgroundImage,
+        font: font || '',
+        btnBg,
+        btnColor,
+        btnBorder,
+        btnRadius,
+        panelRadius,
+        primaryBg: accent,
+        primaryColor: base
     };
 }
 
@@ -2895,7 +3524,16 @@ function applyTheme() {
         '--lx-input-bg': theme.input,
         '--lx-card-bg': theme.card,
         '--lx-event-bg': theme.event,
-        '--lx-shadow': theme.shadow
+        '--lx-shadow': theme.shadow,
+        '--lx-bg-image': theme.image || 'none',
+        '--lx-panel-radius': theme.panelRadius || '4px',
+        '--lx-btn-bg': theme.btnBg || 'rgba(255,255,255,.08)',
+        '--lx-btn-color': theme.btnColor || theme.text,
+        '--lx-btn-border': theme.btnBorder || theme.border,
+        '--lx-btn-radius': theme.btnRadius || '2px',
+        '--lx-btn-primary-bg': theme.primaryBg || theme.gold,
+        '--lx-btn-primary-color': theme.primaryColor || theme.solid,
+        '--lx-font': theme.font || '"Noto Serif SC", "Songti SC", "STSong", "SimSun", serif'
     };
     Object.entries(map).forEach(([key, value]) => state.root.style.setProperty(key, value));
     applyBallAppearance();
@@ -3067,7 +3705,8 @@ function emptyText(defaultText) {
 }
 
 function renderNpc(data) {
-    const year = data.纪年 && data.纪年.年 ? `<div class="lx-year">纪年：${escapeHtml(data.纪年.年号 || '')}${data.纪年.年}年</div>` : '';
+    const timeText = formatTime(data);
+    const year = timeText ? `<div class="lx-year">时令：${escapeHtml(timeText)}</div>` : '';
     const maxRound = toInt(data.最后更新回合, 0);
     const entries = Object.entries(data.NPC状态 || {})
         .filter(([name]) => !isBlacklisted(name))
@@ -3163,14 +3802,27 @@ function renderEventList(panelName, list, roleField) {
 }
 
 function renderRumors(list) {
-    const arr = (Array.isArray(list) ? list : []).filter(item => textMatch(typeof item === 'string' ? item : item.内容));
+    const arr = (Array.isArray(list) ? list : []).filter(item => {
+        if (typeof item === 'string') return textMatch(item);
+        return textMatch(item.内容, item.来源人物, item.可信度, ...(item.传播链 || []).map(x => x.人物 + ' ' + x.版本));
+    });
     if (!arr.length) {
         setPanel('流言', emptyText('风平无议'));
         return;
     }
     const html = arr.slice(-10).reverse().map(item => {
-        const content = typeof item === 'string' ? item : (item && item.内容) || '';
-        return `<div class="lx-rumor">${escapeHtml(content)}</div>`;
+        if (typeof item === 'string') return `<div class="lx-rumor">${escapeHtml(item)}</div>`;
+        const chain = (item.传播链 || []).map((node, index) =>
+            `<span class="lx-rumor-node">${escapeHtml(node.人物)}${node.版本 ? `<small>${escapeHtml(node.版本)}</small>` : ''}</span>${index < item.传播链.length - 1 ? '<span class="lx-rumor-arrow">→</span>' : ''}`
+        ).join('');
+        return `<div class="lx-rumor">
+            <div class="lx-rumor-content">${escapeHtml(item.内容 || '')}</div>
+            <div class="lx-rumor-meta">
+                ${item.来源人物 ? `<span>源头：${escapeHtml(item.来源人物)}</span>` : ''}
+                <span>可信度：${escapeHtml(item.可信度 || '未知')}</span>
+            </div>
+            ${chain ? `<div class="lx-rumor-chain">${chain}</div>` : ''}
+        </div>`;
     }).join('');
     setPanel('流言', html);
 }
@@ -3199,6 +3851,135 @@ function renderLetters(list) {
     setPanel('书信', html);
 }
 
+function chineseNumber(value) {
+    const n = toInt(value, 0);
+    if (n <= 0) return '';
+    const digits = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+    if (n < 10) return digits[n];
+    if (n === 10) return '十';
+    if (n < 20) return '十' + digits[n - 10];
+    if (n === 20) return '二十';
+    if (n < 30) return '廿' + digits[n - 20];
+    return String(n);
+}
+
+function chineseDay(value) {
+    const n = toInt(value, 0);
+    if (!n) return '';
+    if (n <= 10) return '初' + chineseNumber(n);
+    if (n < 20) return '十' + chineseNumber(n - 10);
+    if (n === 20) return '二十';
+    if (n < 30) return '廿' + chineseNumber(n - 20);
+    return String(n);
+}
+
+function formatTime(data) {
+    const t = (data && data.时令) || {};
+    const year = t.年 || (data && data.纪年 && data.纪年.年) || 0;
+    const era = t.年号 || (data && data.纪年 && data.纪年.年号) || '';
+    const date = [year ? `${era}${chineseNumber(year)}年` : '', t.月 ? `${chineseNumber(t.月)}月` : '', t.日 ? chineseDay(t.日) : ''].filter(Boolean).join('·');
+    return [date, t.节气, t.节日, t.时辰].filter(Boolean).join(' · ');
+}
+
+function renderCalendar(data) {
+    const t = (data && data.时令) || {};
+    const date = formatTime(data);
+    if (!date) {
+        setPanel('时令', emptyText('时令未记') + '<div class="lx-time-hint">正文出现「景衡 X 年」「三月初八」等日期时，会自动记录。</div>');
+        return;
+    }
+    const year = t.年 || (data.纪年 && data.纪年.年) || 0;
+    const era = t.年号 || (data.纪年 && data.纪年.年号) || '景衡';
+    const cells = [
+        ['纪年', year ? `${era}${chineseNumber(year)}年` : '不详'],
+        ['月日', `${t.月 ? chineseNumber(t.月) + '月' : '不详'}${t.日 ? chineseDay(t.日) : ''}`],
+        ['节气', t.节气 || '未记'],
+        ['节日', t.节日 || '未记'],
+        ['时辰', t.时辰 || '未记'],
+        ['备注', t.备注 || '——']
+    ];
+    const html = `<div class="lx-time-big">${escapeHtml(date)}</div>
+        <div class="lx-time-grid">${cells.map(cell => `<div class="lx-time-cell"><span>${escapeHtml(cell[0])}</span><b>${escapeHtml(String(cell[1]))}</b></div>`).join('')}</div>`;
+    setPanel('时令', html);
+}
+
+function renderMemorials(list) {
+    const arr = (Array.isArray(list) ? list : []).filter(item => textMatch(item.标题, item.上奏人, item.衙门, item.事由, item.主张, item.状态));
+    if (!arr.length) {
+        setPanel('奏折', emptyText('案上无折'));
+        return;
+    }
+    const done = item => ['准奏', '驳回', '已结'].includes(item.状态);
+    const active = arr.filter(item => !done(item));
+    const finished = arr.filter(done);
+    const card = item => `<div class="lx-memorial ${done(item) ? 'done' : ''}">
+        <div class="lx-memorial-head"><span class="lx-memorial-title">${escapeHtml(item.标题)}</span><span class="lx-memorial-status">${escapeHtml(item.状态 || '待议')}</span></div>
+        <div class="lx-memorial-meta">${[item.上奏人 && '上奏：' + item.上奏人, item.衙门 && '衙门：' + item.衙门].filter(Boolean).map(x => `<span>${escapeHtml(x)}</span>`).join('')}</div>
+        ${item.事由 ? `<div class="lx-memorial-body">${escapeHtml(item.事由)}</div>` : ''}
+        <div class="lx-memorial-grid">
+            ${item.主张 ? `<div><b>主张</b>${escapeHtml(item.主张)}</div>` : ''}
+            ${item.反对 ? `<div><b>反对</b>${escapeHtml(item.反对)}</div>` : ''}
+        </div>
+        ${item.结果 ? `<div class="lx-memorial-result">结果：${escapeHtml(item.结果)}</div>` : ''}
+        <div class="lx-event-progress"><div class="lx-progress-bar"><div class="lx-progress-fill" style="width:${getProgressNum(item)}%"></div></div><span class="lx-progress-num">${getProgressNum(item)}%</span></div>
+        ${!done(item) ? `<div class="lx-memorial-actions">
+            <button type="button" class="lx-mini-btn" data-action="memorial-status" data-status="准奏" data-title="${escapeAttr(item.标题)}">准奏</button>
+            <button type="button" class="lx-mini-btn" data-action="memorial-status" data-status="留中" data-title="${escapeAttr(item.标题)}">留中</button>
+            <button type="button" class="lx-mini-btn" data-action="memorial-status" data-status="驳回" data-title="${escapeAttr(item.标题)}">驳回</button>
+        </div>` : ''}
+    </div>`;
+    let html = active.map(card).join('') || '<div class="lx-empty" style="padding:14px 0;">暂无待议奏折</div>';
+    if (finished.length) {
+        html += `<details class="lx-completed"><summary><span>已结 (${finished.length})</span><span>点击展开</span></summary><div class="lx-completed-body">${finished.map(card).join('')}</div></details>`;
+    }
+    setPanel('奏折', html);
+}
+
+function renderSecrets(list) {
+    const arr = (Array.isArray(list) ? list : []).filter(item => textMatch(item.内容, item.涉及, item.证据, ...(item.知情者 || []).map(k => k.人物)));
+    if (!arr.length) {
+        setPanel('秘辛', emptyText('暂无秘辛'));
+        return;
+    }
+    const html = arr.slice().reverse().map(item => {
+        const know = item.知情者 || [];
+        const unknown = item.不知情者 || [];
+        return `<div class="lx-secret">
+            <div class="lx-secret-content">${escapeHtml(item.内容 || '')}</div>
+            ${item.涉及 ? `<div class="lx-secret-line"><b>涉及</b>${escapeHtml(item.涉及)}</div>` : ''}
+            <div class="lx-secret-line"><b>知情</b>${know.length ? know.map(k => `<span class="lx-secret-chip known">${escapeHtml(k.人物)}·${escapeHtml(k.程度)}</span>`).join('') : '<span class="lx-secret-none">无人</span>'}</div>
+            <div class="lx-secret-line"><b>不知情</b>${unknown.length ? unknown.map(k => `<span class="lx-secret-chip">${escapeHtml(k.人物)}</span>`).join('') : '<span class="lx-secret-none">——</span>'}</div>
+            ${item.证据 ? `<div class="lx-secret-evidence">证据/把柄：${escapeHtml(item.证据)}</div>` : ''}
+        </div>`;
+    }).join('');
+    setPanel('秘辛', html);
+}
+
+function renderStruggles(list) {
+    const filter = state.ui.struggleFilter || '全部';
+    const arr = (Array.isArray(list) ? list : [])
+        .filter(item => filter === '全部' || item.类型 === filter)
+        .filter(item => textMatch(item.事件名, item.发起者, item.目标, item.手段, item.阶段, item.结果));
+    const tabs = ['全部', '宫斗', '政斗'].map(name =>
+        `<button type="button" class="lx-mini-btn ${filter === name ? 'active' : ''}" data-action="struggle-filter" data-filter="${name}">${name}</button>`
+    ).join('');
+    if (!arr.length) {
+        setPanel('斗争', `<div class="lx-struggle-filter">${tabs}</div>` + emptyText('暂无斗争'));
+        return;
+    }
+    const card = item => `<div class="lx-struggle level-${escapeAttr(item.烈度 || '低')}">
+        <div class="lx-struggle-head"><span class="lx-struggle-type">${escapeHtml(item.类型 || '宫斗')}</span><span class="lx-struggle-name">${escapeHtml(item.事件名)}</span><span class="lx-struggle-level">${escapeHtml(item.烈度 || '低')}烈度</span></div>
+        <div class="lx-struggle-line"><b>发起</b>${escapeHtml(item.发起者 || '不详')} <span class="lx-arrow">→</span> ${escapeHtml(item.目标 || '不详')}</div>
+        ${item.手段 ? `<div class="lx-struggle-line"><b>手段</b>${escapeHtml(item.手段)}</div>` : ''}
+        <div class="lx-struggle-line"><b>阶段</b>${escapeHtml(item.阶段 || '策划')}</div>
+        <div class="lx-event-progress"><div class="lx-progress-bar"><div class="lx-progress-fill" style="width:${getProgressNum(item)}%"></div></div><span class="lx-progress-num">${getProgressNum(item)}%</span></div>
+        ${item.知情者 && item.知情者.length ? `<div class="lx-struggle-line"><b>知情</b>${item.知情者.map(k => `<span class="lx-secret-chip known">${escapeHtml(k.人物)}</span>`).join('')}</div>` : ''}
+        ${item.证据 ? `<div class="lx-struggle-line"><b>证据</b>${escapeHtml(item.证据)}</div>` : ''}
+        ${item.结果 ? `<div class="lx-struggle-result">${escapeHtml(item.结果)}</div>` : ''}
+    </div>`;
+    setPanel('斗争', `<div class="lx-struggle-filter">${tabs}</div>` + arr.slice().reverse().map(card).join(''));
+}
+
 function renderTimeline(data, range) {
     const items = [];
     ['NPC事件', '国家事件', '邻国事件'].forEach(key => {
@@ -3210,6 +3991,12 @@ function renderTimeline(data, range) {
                 text: event.事件名 ? `${event.事件名}：${event.内容 || ''}` : (event.内容 || '')
             });
         });
+    });
+    (Array.isArray(data.奏折) ? data.奏折 : []).forEach(item => {
+        items.push({ round: toInt(item.回合, 0), type: '奏折', text: `${item.标题 || ''}：${item.事由 || ''}` });
+    });
+    (Array.isArray(data.斗争) ? data.斗争 : []).forEach(item => {
+        items.push({ round: toInt(item.回合, 0), type: item.类型 || '斗争', text: `${item.事件名 || ''}：${item.手段 || ''}` });
     });
     (Array.isArray(data.流言) ? data.流言 : []).forEach(item => {
         items.push({ round: toInt(item.回合, 0), type: '流言', text: item.内容 || '' });
@@ -3412,14 +4199,76 @@ function renderPregnancy(list) {
     setPanel('孕事', html + '<div style="margin-top:10px;"><button type="button" class="lx-mini-btn" data-action="preg-add">+ 添加孕事</button></div>');
 }
 
+function pregnancyTip(month) {
+    const m = toInt(month, 0);
+    if (!m) return '尚未进入孕期。记录只作剧情参考，不是医学判断。';
+    if (m <= 3) return '孕 1-3 月：最容易不稳，宜静养、避舟车与寒凉；知道的人通常还很少。';
+    if (m <= 6) return '孕 4-6 月：开始显怀，安胎与饮食是重点；身边人可能逐渐察觉。';
+    if (m <= 8) return '孕 7-8 月：需要备产、稳胎与安排产房；宫中眼线最容易在这时动手。';
+    return '孕 9-10 月：临盆在即，产房、稳婆、太医与名分都要提前落定。';
+}
+
+function renderHeir(heir) {
+    const data = normalizeHeir(heir, 0);
+    const user = data.用户;
+    const kids = data.子女.filter(item => textMatch(item.姓名, item.性别, item.身份, item.生母, item.状态, item.备注));
+    const userMatch = textMatch('{{user}}', user.受孕判定, user.状态, user.备注, ...(user.发现 || []).map(k => k.人物));
+    const hasUser = user.内射次数 || user.孕期月 || (user.状态 && user.状态 !== '未孕') || user.受孕判定 !== '未定';
+    if (!hasUser && !kids.length) {
+        setPanel('子嗣', emptyText('尚无子嗣记录') + '<div class="lx-time-hint">开启子嗣模块后，生成一次才会开始记录 {{user}} 的孕事与子女。</div>');
+        return;
+    }
+
+    let html = '';
+    if (userMatch) {
+        const known = user.发现 || [];
+        html += `<div class="lx-heir-user">
+            <div class="lx-heir-title">主线 · {{user}}</div>
+            <div class="lx-heir-stats">
+                <div><span>累计次数</span><b>${user.内射次数 || 0}</b></div>
+                <div><span>本回</span><b>${user.本回次数 ? '+' + user.本回次数 : '—'}</b></div>
+                <div><span>受孕判定</span><b>${escapeHtml(user.受孕判定 || '未定')}</b></div>
+                <div><span>孕期</span><b>${user.孕期月 ? user.孕期月 + ' 月' : '—'}</b></div>
+            </div>
+            <div class="lx-heir-status">${escapeHtml(user.状态 || '未孕')}</div>
+            <div class="lx-heir-line"><b>谁知道</b>${known.length ? known.map(k => `<span class="lx-secret-chip known">${escapeHtml(k.人物)}·${escapeHtml(k.程度)}</span>`).join('') : '<span class="lx-secret-none">尚未有人察觉</span>'}</div>
+            ${user.备注 ? `<div class="lx-preg-note">${escapeHtml(user.备注)}</div>` : ''}
+            <div class="lx-heir-tip">${escapeHtml(pregnancyTip(user.孕期月))}</div>
+        </div>`;
+    }
+
+    if (kids.length) {
+        html += `<div class="lx-npc-group-title">子女 · ${kids.length}</div>`;
+        html += kids.map(item => `<div class="lx-heir-child">
+            <div class="lx-heir-child-head"><span class="lx-heir-child-name">${escapeHtml(item.姓名)}</span><span class="lx-heir-child-title">${escapeHtml(item.身份 || (item.性别 === '女' ? '皇女' : '皇子'))}</span></div>
+            <div class="lx-heir-line"><b>性别</b>${escapeHtml(item.性别)}　<b>生母</b>${escapeHtml(item.生母 || '不详')}　<b>排行</b>${item.排行 ? '第' + item.排行 : '未序'}</div>
+            <div class="lx-heir-line"><b>出生</b>${escapeHtml(item.出生 || '未记')}　<b>状态</b>${escapeHtml(item.状态 || '在世')}</div>
+            ${item.备注 ? `<div class="lx-preg-note">${escapeHtml(item.备注)}</div>` : ''}
+        </div>`).join('');
+    } else {
+        html += '<div class="lx-empty" style="padding:14px 0;">尚无子女出生</div>';
+    }
+    setPanel('子嗣', html);
+}
+
 function updateModuleVisibility() {
-    const showPregnancy = getSettings().pregnancyModule;
-    ['tab', 'panel'].forEach(kind => {
-        const map = kind === 'tab' ? state.refs.tabs : state.refs.panels;
-        const el = map && map['孕事'];
-        if (el) el.classList.toggle('lx-module-hidden', !showPregnancy);
+    const s = getSettings();
+    const visibility = {
+        '孕事': s.pregnancyModule,
+        '子嗣': s.heirModule,
+        '奏折': s.memorialModule,
+        '秘辛': s.secretModule,
+        '时令': s.calendarModule,
+        '斗争': s.struggleModule
+    };
+    Object.entries(visibility).forEach(([name, visible]) => {
+        ['tab', 'panel'].forEach(kind => {
+            const map = kind === 'tab' ? state.refs.tabs : state.refs.panels;
+            const el = map && map[name];
+            if (el) el.classList.toggle('lx-module-hidden', !visible);
+        });
+        if (!visible && state.ui.tab === name) switchTab('NPC状态');
     });
-    if (!showPregnancy && state.ui.tab === '孕事') switchTab('NPC状态');
 }
 
 function updateTabCounts(data) {
@@ -3428,11 +4277,16 @@ function updateTabCounts(data) {
         'NPC事件': (data.NPC事件 || []).filter(e => getProgressNum(e) < 100).length,
         '国家事件': (data.国家事件 || []).filter(e => getProgressNum(e) < 100).length,
         '邻国事件': (data.邻国事件 || []).filter(e => getProgressNum(e) < 100).length,
+        '奏折': (data.奏折 || []).filter(e => !['准奏', '驳回', '已结'].includes(e.状态)).length,
+        '秘辛': (data.秘辛 || []).length,
         '流言': (data.流言 || []).length,
+        '斗争': (data.斗争 || []).filter(e => getProgressNum(e) < 100).length,
         '书信': (data.书信 || []).length,
+        '时令': data.时令 && (data.时令.月 || data.时令.节气) ? 1 : 0,
         '关系图': (data.关系 || []).length,
         '伏笔': (data.伏笔 || []).filter(f => !f.已回收).length,
-        '孕事': (data.孕事 || []).filter(p => !p.已结束).length
+        '孕事': (data.孕事 || []).filter(p => !p.已结束).length,
+        '子嗣': (data.子嗣 && data.子嗣.子女 ? data.子嗣.子女.length : 0) + (data.子嗣 && data.子嗣.用户 && /有孕|临盆/.test(data.子嗣.用户.状态 || '') ? 1 : 0)
     };
     Object.entries(state.refs.tabs || {}).forEach(([name, tab]) => {
         const num = tab.querySelector('.lx-tab-num');
@@ -3447,12 +4301,17 @@ function renderAll() {
     renderEventList('NPC事件', data.NPC事件, '角色');
     renderEventList('国家事件', data.国家事件);
     renderEventList('邻国事件', data.邻国事件, '国家');
+    renderMemorials(data.奏折);
+    renderSecrets(data.秘辛);
     renderRumors(data.流言);
+    renderStruggles(data.斗争);
     renderLetters(data.书信);
+    renderCalendar(data);
     renderTimeline(data, getSettings().timelineRange);
     renderRelations(data.关系, getSettings().relationView);
     renderForeshadow(data.伏笔);
     renderPregnancy(data.孕事);
+    renderHeir(data.子嗣);
     updateModuleVisibility();
     updateTabCounts(data);
 }
@@ -3555,11 +4414,28 @@ function buildSettingsHTML() {
                 <div class="lx-field-hint">开启后 NPC 状态页先显示主线人物，再显示群像人物；关闭则全部混在一起。</div>
             </div>
             <div class="lx-field">
+                <label class="lx-field-label">扩展模块</label>
+                <div class="lx-radio-group">
+                    ${checkRow('lx-memorial-module', s.memorialModule, '朝堂奏折')}
+                    ${checkRow('lx-secret-module', s.secretModule, '秘辛 / 把柄')}
+                    ${checkRow('lx-calendar-module', s.calendarModule, '时令日历')}
+                    ${checkRow('lx-struggle-module', s.struggleModule, '宫斗 / 政斗')}
+                </div>
+                <div class="lx-field-hint">关闭后对应页签隐藏，提示词也会要求本回不输出该模块。</div>
+            </div>
+            <div class="lx-field">
                 <label class="lx-field-label">后妃孕事模块</label>
                 <div class="lx-radio-group">
                     ${checkRow('lx-preg-module', s.pregnancyModule, '开启孕事页签与推演')}
                 </div>
                 <div class="lx-field-hint">默认关闭。开启后多一个「孕事」页签，只记录后妃的有孕月份与状态。</div>
+            </div>
+            <div class="lx-field">
+                <label class="lx-field-label">子嗣模块</label>
+                <div class="lx-radio-group">
+                    ${checkRow('lx-heir-module', s.heirModule, '开启 {{user}} 孕事与子女记录')}
+                </div>
+                <div class="lx-field-hint">记录 {{user}} 的累计次数、受孕判定、孕期、谁知道，以及出生后的子女性别/身份/排行；默认关闭。</div>
             </div>
             <details class="lx-fold">
                 <summary>注入范围（AI 可见）</summary>
@@ -3828,7 +4704,7 @@ function saveSettingsFromForm() {
         subApiKey: val('#lx-api-key').trim(),
         subApiModel: val('#lx-api-model').trim(),
         temperature: clamp(Number(val('#lx-temp')) || 0, 0, 2),
-        maxTokens: clamp(toInt(val('#lx-maxtok'), 2200), 200, 8000),
+        maxTokens: clamp(toInt(val('#lx-maxtok'), 3200), 200, 8000),
         debug: radio('input[name="lx-debug"]') === 'true',
         injectEvents: checked('#lx-inj-events'),
         injectNpc: checked('#lx-inj-npc'),
@@ -3838,8 +4714,13 @@ function saveSettingsFromForm() {
         injectRelations: checked('#lx-inj-rel'),
         injectTimeline: checked('#lx-inj-timeline'),
         leadGroup: checked('#lx-lead-group'),
+        memorialModule: checked('#lx-memorial-module'),
+        secretModule: checked('#lx-secret-module'),
+        calendarModule: checked('#lx-calendar-module'),
+        struggleModule: checked('#lx-struggle-module'),
         ballSize: clamp(toInt(val('#lx-ball-size'), 50), 36, 84),
         pregnancyModule: checked('#lx-preg-module'),
+        heirModule: checked('#lx-heir-module'),
         relationView: radio('input[name="lx-relview"]') === 'graph' ? 'graph' : 'card',
         timelineRange: clamp(toInt(val('#lx-timeline-range'), 20), 0, 9999),
         foreshadowAi: checked('#lx-fp-ai'),
@@ -4027,6 +4908,25 @@ async function toggleForeshadow(idx) {
     if (tid < 0) return;
     await attachGroupData(tid, data);
     renderAll();
+}
+
+async function setMemorialStatus(title, status) {
+    const data = getGroupData() || normalizeData({});
+    const item = (data.奏折 || []).find(row => row.标题 === title);
+    if (!item) return;
+    item.状态 = status || '待议';
+    item.更新回合 = Math.max(1, toInt(data.最后更新回合, 1));
+    if (['准奏', '驳回', '已结'].includes(item.状态)) item.进度 = 100;
+    if (!item.结果) {
+        if (item.状态 === '准奏') item.结果 = '已准奏，进入执行。';
+        else if (item.状态 === '驳回') item.结果 = '已驳回，原议作罢。';
+        else if (item.状态 === '留中') item.结果 = '留中不发，暂不处置。';
+    }
+    const tid = getLatestAssistantId();
+    if (tid < 0) return;
+    await attachGroupData(tid, data);
+    renderAll();
+    toast('success', '奏折状态：' + item.状态);
 }
 
 async function autoRecoverForeshadow() {
@@ -4347,6 +5247,13 @@ async function handleAction(action, element) {
             return;
         case 'fp-auto':
             await autoRecoverForeshadow();
+            return;
+        case 'memorial-status':
+            await setMemorialStatus(element.dataset.title, element.dataset.status);
+            return;
+        case 'struggle-filter':
+            state.ui.struggleFilter = element.dataset.filter || '全部';
+            renderAll();
             return;
         case 'preg-edit':
             await editPregnancy(Number(element.dataset.idx));
@@ -4892,10 +5799,13 @@ export const __test = {
     mergeRelations,
     mergeForeshadow,
     normalizeEvent,
+    normalizeHeir,
+    mergeHeir,
     getProgressNum,
     parseChineseNumber,
     incrementAge,
     extractEra,
+    extractCalendar,
     isBlacklisted,
     escapeHtml,
     wrapSubPrompt,
