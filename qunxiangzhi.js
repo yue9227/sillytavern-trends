@@ -1,4 +1,4 @@
-const VERSION = '0.1.5';
+const VERSION = '0.1.6';
 let userNamesCache = { time: 0, names: [] };
 const HOST_ID = 'lx-group-host';
 const LEGACY_IDS = ['lx-ball', 'lx-panel', 'lx-mask', 'lx-settings', 'lx-group-style'];
@@ -2634,9 +2634,16 @@ async function loadWorldbookEntries() {
     return out;
 }
 
-function isWorldbookEntryEnabled(id) {
+function isWorldbookEntryEnabled(id, entry) {
     const map = getSettings().worldbookEntries || {};
-    return map[id] !== false;
+    if (Object.prototype.hasOwnProperty.call(map, id)) return map[id] !== false;
+    const target = entry || (state.worldbookEntryCache || []).find(item => item.id === id);
+    return target ? target.enabled !== false : true;
+}
+
+function worldbookEntrySource(id, entry) {
+    const map = getSettings().worldbookEntries || {};
+    return Object.prototype.hasOwnProperty.call(map, id) ? '脚本' : '酒馆';
 }
 
 async function collectWorldbookContext(haystack) {
@@ -2652,8 +2659,8 @@ async function collectWorldbookContext(haystack) {
     const addEntries = (list, bookName) => {
         if (!Array.isArray(list)) list = list && Array.isArray(list.entries) ? list.entries : [];
         list.forEach((entry, index) => {
-            if (!entry || entry.enabled === false || entry.disabled === true) return;
-            if (!isWorldbookEntryEnabled(worldbookEntryId(bookName, entry, index))) return;
+            if (!entry) return;
+            if (!isWorldbookEntryEnabled(worldbookEntryId(bookName, entry, index), entry)) return;
             const content = String(entry.content || entry.内容 || '').trim();
             if (!content) return;
             const title = String(entry.comment || entry.name || entry.标题 || '').trim();
@@ -6123,14 +6130,23 @@ function checkRow(id, checked, label) {
 function worldbookSettingsHTML() {
     if (state.worldbookLoading || !state.worldbookLoaded) return '<div class="lx-field-hint">正在读取当前角色卡绑定的世界书…</div>';
     const entries = state.worldbookEntryCache || [];
-    if (!entries.length) return '<div class="lx-field-hint">当前角色卡没有绑定可读世界书，或酒馆世界书已关闭。</div>';
-    return entries.slice(0, 80).map(entry => `<label class="lx-wb-item">
-        <input type="checkbox" data-action="wb-toggle" data-wb-id="${escapeAttr(entry.id)}" ${isWorldbookEntryEnabled(entry.id) ? 'checked' : ''}>
-        <span class="lx-wb-title">${escapeHtml(entry.title)}</span>
-        <span class="lx-wb-book">${escapeHtml(entry.book)}</span>
-        ${entry.keys.length ? `<span class="lx-wb-keys">${escapeHtml(entry.keys.join(' / '))}</span>` : ''}
-        <span class="lx-wb-preview">${escapeHtml((entry.content || '').slice(0, 220))}</span>
-    </label>`).join('');
+    const tools = '<div class="lx-wb-tools"><button type="button" class="lx-mini-btn" data-action="wb-refresh">刷新条目</button><span>勾选=脚本读取</span></div>';
+    if (!entries.length) return tools + '<div class="lx-field-hint">当前角色卡没有绑定可读世界书，或世界书里没有条目。</div>';
+    return tools + entries.slice(0, 80).map(entry => {
+        const enabled = isWorldbookEntryEnabled(entry.id, entry);
+        const source = worldbookEntrySource(entry.id, entry);
+        const sourceLabel = source === '脚本'
+            ? `脚本${enabled ? '开启' : '关闭'}`
+            : `跟随酒馆${entry.enabled ? '开启' : '关闭'}`;
+        return `<label class="lx-wb-item ${enabled ? 'on' : 'off'}">
+            <input type="checkbox" data-action="wb-toggle" data-wb-id="${escapeAttr(entry.id)}" ${enabled ? 'checked' : ''}>
+            <span class="lx-wb-title">${escapeHtml(entry.title)}</span>
+            <span class="lx-wb-book">${escapeHtml(entry.book)}</span>
+            <span class="lx-wb-state">${sourceLabel}</span>
+            ${entry.keys.length ? `<span class="lx-wb-keys">${escapeHtml(entry.keys.join(' / '))}</span>` : ''}
+            <span class="lx-wb-preview">${escapeHtml((entry.content || '').slice(0, 220))}</span>
+        </label>`;
+    }).join('');
 }
 
 function buildSettingsHTML() {
@@ -6218,6 +6234,8 @@ function buildSettingsHTML() {
                 <div class="lx-inline">
                     <button type="button" class="lx-mini-btn" data-action="prompt-preview">群像补全提示词（只读）</button>
                     <button type="button" class="lx-mini-btn" data-action="injection-preview">正文注入预览（会影响正文）</button>
+                </div>
+                <div class="lx-inline" style="margin-top:6px;">
                     <button type="button" class="lx-mini-btn" data-action="data-edit">编辑当前数据</button>
                 </div>
                 <div class="lx-field-hint">补全提示词只发给群像生成器，不写进正文；正文注入会作为上下文发给主模型，影响正文但不会写入正文。</div>
@@ -6445,7 +6463,11 @@ async function refreshWorldbookEntries(force) {
 
 function openSettings() {
     if (!state.refs.settings) return;
+    const oldBody = state.refs.settings.querySelector('.lx-settings-body');
+    const scrollTop = oldBody ? oldBody.scrollTop : 0;
     state.refs.settings.innerHTML = buildSettingsHTML();
+    const newBody = state.refs.settings.querySelector('.lx-settings-body');
+    if (newBody) newBody.scrollTop = scrollTop;
     syncViewportVars();
     state.refs.settings.classList.add('show');
     state.refs.settings.tabIndex = -1;
@@ -7201,13 +7223,26 @@ async function handleAction(action, element) {
         case 'data-edit':
             openDataEditor();
             return;
+        case 'wb-refresh':
+            state.worldbookLoaded = false;
+            state.worldbookEntryCache = [];
+            refreshWorldbookEntries(true);
+            return;
         case 'wb-toggle': {
             const id = element.dataset.wbId || '';
             if (!id) return;
             const map = Object.assign({}, getSettings().worldbookEntries || {});
-            map[id] = !isWorldbookEntryEnabled(id);
+            const next = !isWorldbookEntryEnabled(id);
+            map[id] = next;
             saveSettings({ worldbookEntries: map });
-            openSettings('basic');
+            element.checked = next;
+            const row = element.closest('.lx-wb-item');
+            if (row) {
+                row.classList.toggle('on', next);
+                row.classList.toggle('off', !next);
+                const state = row.querySelector('.lx-wb-state');
+                if (state) state.textContent = `脚本${next ? '开启' : '关闭'}`;
+            }
             return;
         }
         case 'follow-toggle': {
