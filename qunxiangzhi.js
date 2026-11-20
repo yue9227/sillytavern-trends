@@ -304,6 +304,8 @@ const state = {
     refs: {},
     settings: null,
     dataCache: { key: '', data: null },
+    worldbookEntryCache: [],
+    worldbookLoading: false,
     injection: null,
     injectionKey: '',
     logs: [],
@@ -2568,8 +2570,7 @@ function worldbookEntryId(bookName, entry, index) {
     return String(bookName || '') + '::' + (title || 'entry-' + index);
 }
 
-function getWorldbookEntryList() {
-    const out = [];
+function getBoundWorldbookNames() {
     const books = new Set();
     const addBook = value => {
         if (!value) return;
@@ -2583,31 +2584,45 @@ function getWorldbookEntryList() {
     try {
         if (typeof getCharWorldbookNames === 'function') addBook(getCharWorldbookNames('current'));
     } catch (e) { /* ignore */ }
-    for (const bookName of books) {
-        let list = null;
-        try {
-            if (typeof getWorldbook === 'function') list = getWorldbook(bookName);
-        } catch (e) { /* ignore */ }
-        if (!list) {
+    return Array.from(books);
+}
+
+async function loadWorldbookEntries() {
+    if (state.worldbookLoading) return state.worldbookEntryCache;
+    state.worldbookLoading = true;
+    const out = [];
+    try {
+        for (const bookName of getBoundWorldbookNames()) {
+            let list = null;
             try {
-                if (typeof getLorebookEntries === 'function') list = getLorebookEntries(bookName);
+                if (typeof getWorldbook === 'function') list = await getWorldbook(bookName);
             } catch (e) { /* ignore */ }
-        }
-        if (!Array.isArray(list)) list = list && Array.isArray(list.entries) ? list.entries : [];
-        list.forEach((entry, index) => {
-            if (!entry) return;
-            const content = String(entry.content || entry.内容 || '').trim();
-            const title = String(entry.comment || entry.name || entry.标题 || '').trim();
-            if (!content && !title) return;
-            out.push({
-                book: bookName,
-                id: worldbookEntryId(bookName, entry, index),
-                title: title || `条目 ${index + 1}`,
-                keys: [].concat(entry.key || [], entry.keys || entry.关键字 || []).flatMap(x => String(x).split(/[,，、\s]+/)).filter(Boolean).slice(0, 12),
-                content: content,
-                enabled: entry.enabled !== false && entry.disabled !== true
+            if (!list) {
+                try {
+                    if (typeof getLorebookEntries === 'function') list = await getLorebookEntries(bookName);
+                } catch (e) { /* ignore */ }
+            }
+            if (!Array.isArray(list)) list = list && Array.isArray(list.entries) ? list.entries : [];
+            list.forEach((entry, index) => {
+                if (!entry) return;
+                const content = String(entry.content || entry.内容 || '').trim();
+                const title = String(entry.name || entry.comment || entry.标题 || '').trim();
+                if (!content && !title) return;
+                const keys = [].concat((entry.strategy && entry.strategy.keys) || [], entry.key || [], entry.keys || entry.关键字 || [])
+                    .flatMap(x => String(x).split(/[,，、\s]+/)).filter(Boolean).slice(0, 12);
+                out.push({
+                    book: bookName,
+                    id: worldbookEntryId(bookName, entry, index),
+                    title: title || `条目 ${index + 1}`,
+                    keys,
+                    content,
+                    enabled: entry.enabled !== false && entry.disabled !== true
+                });
             });
-        });
+        }
+    } finally {
+        state.worldbookLoading = false;
+        state.worldbookEntryCache = out;
     }
     return out;
 }
@@ -2617,7 +2632,7 @@ function isWorldbookEntryEnabled(id) {
     return map[id] !== false;
 }
 
-function collectWorldbookContext(haystack) {
+async function collectWorldbookContext(haystack) {
     const context = String(haystack || '').toLowerCase();
     const mode = getSettings().worldbookMode || 'follow';
     if (mode === 'off') return '';
@@ -2635,7 +2650,7 @@ function collectWorldbookContext(haystack) {
             const content = String(entry.content || entry.内容 || '').trim();
             if (!content) return;
             const title = String(entry.comment || entry.name || entry.标题 || '').trim();
-            const rawKeys = [].concat(entry.key || [], entry.keys || entry.关键字 || []);
+            const rawKeys = [].concat((entry.strategy && entry.strategy.keys) || [], entry.key || [], entry.keys || entry.关键字 || []);
             const keys = rawKeys.flatMap(item => String(item).split(/[,，、\s]+/)).filter(k => k.length >= 2);
             const matched = !!context && (keys.some(k => context.includes(k.toLowerCase())) || (title.length >= 2 && context.includes(title.toLowerCase())));
             // 只读相关条目，不把整本世界书塞进提示词。
@@ -2649,11 +2664,11 @@ function collectWorldbookContext(haystack) {
     for (const name of getWorldbookNamesForPrompt()) {
         let list = null;
         try {
-            if (typeof getWorldbook === 'function') list = getWorldbook(name);
+            if (typeof getWorldbook === 'function') list = await getWorldbook(name);
         } catch (e) { /* try next API */ }
         if (!list) {
             try {
-                if (typeof getLorebookEntries === 'function') list = getLorebookEntries(name);
+                if (typeof getLorebookEntries === 'function') list = await getLorebookEntries(name);
             } catch (e) { /* ignore */ }
         }
         addEntries(list, name);
@@ -2664,12 +2679,12 @@ function collectWorldbookContext(haystack) {
     return text;
 }
 
-function buildWorldbookPrompt(haystack) {
-    const text = collectWorldbookContext(haystack);
+async function buildWorldbookPrompt(haystack) {
+    const text = await collectWorldbookContext(haystack);
     return text ? `\n\n【世界书资料】（只取与当前人物/剧情相关的条目；人物关系、已有子女、孕事、位份以此为准，没写的不要编）\n${text}` : '';
 }
 
-function buildPromptPreview() {
+async function buildPromptPreview() {
     const s = getSettings();
     const presets = getPresets();
     const core = presets[s.presetName] || presets['正常'];
@@ -2681,8 +2696,9 @@ function buildPromptPreview() {
         if (msg && msg.role === 'assistant') ctx = stripGroupBlock(msg.message);
     } catch (e) { /* ignore */ }
     const baselineText = JSON.stringify(baseline, null, 2).slice(0, 18000);
+    const worldbookText = await buildWorldbookPrompt(ctx + '\n' + baselineText);
     return wrapSubPrompt(core)
-        + buildWorldbookPrompt(ctx + '\n' + baselineText)
+        + worldbookText
         + `\n\n【当前群像状态】\n` + baselineText
         + `\n\n【本回正文】\n` + ctx.slice(0, 12000)
         + `\n\n【输出格式（必须遵守）】\n只输出一个合法 JSON 对象，不要输出解释、前后缀或 Markdown 代码块。`;
@@ -2715,8 +2731,9 @@ async function generateSub(settings, options) {
     }
 
     const baselineText = JSON.stringify(baseline, null, 2).slice(0, 18000);
+    const worldbookText = await buildWorldbookPrompt(ctx + '\n' + baselineText + '\n' + (opts.instruction || ''));
     const prompt = wrapSubPrompt(core)
-        + buildWorldbookPrompt(ctx + '\n' + baselineText + '\n' + (opts.instruction || ''))
+        + worldbookText
         + (opts.initial ? '\n\n【开局补全】这是第一次补全：结合世界书、人设、开场白和最初几层对话，建立所有已出现和世界书提到的 NPC、国家事件、时令与线索；不要只写眼前几个人。' : '')
         + (opts.instruction ? `\n\n【本次重roll要求】\n${opts.instruction}` : '')
         + `\n\n【当前群像状态】\n` + baselineText
@@ -5344,6 +5361,26 @@ function formatTime(data) {
     return [date, t.节气, t.节日, t.时辰].filter(Boolean).join(' · ');
 }
 
+const SOLAR_TERMS = [
+    [1, 6, '小寒'], [1, 20, '大寒'], [2, 4, '立春'], [2, 19, '雨水'],
+    [3, 6, '惊蛰'], [3, 21, '春分'], [4, 5, '清明'], [4, 20, '谷雨'],
+    [5, 6, '立夏'], [5, 21, '小满'], [6, 6, '芒种'], [6, 21, '夏至'],
+    [7, 7, '小暑'], [7, 23, '大暑'], [8, 8, '立秋'], [8, 23, '处暑'],
+    [9, 8, '白露'], [9, 23, '秋分'], [10, 8, '寒露'], [10, 23, '霜降'],
+    [11, 7, '立冬'], [11, 22, '小雪'], [12, 7, '大雪'], [12, 22, '冬至']
+];
+
+function inferSolarTerm(month, day) {
+    const m = toInt(month, 0);
+    const d = toInt(day, 0);
+    if (!m || !d) return '待推';
+    const exact = SOLAR_TERMS.find(([sm, sd]) => sm === m && sd === d);
+    if (exact) return exact[2];
+    const value = m * 31 + d;
+    const next = SOLAR_TERMS.slice().sort((a, b) => a[0] * 31 + a[1] - (b[0] * 31 + b[1])).find(([sm, sd]) => sm * 31 + sd >= value) || SOLAR_TERMS[0];
+    return next[2];
+}
+
 const FESTIVALS = [
     [1, 1, '元日'], [1, 7, '人日'], [1, 15, '上元'], [2, 2, '龙抬头'],
     [3, 3, '上巳'], [4, 4, '寒食'], [5, 5, '端阳'], [7, 7, '七夕'],
@@ -5429,10 +5466,10 @@ function renderCalendar(data) {
     const rawFestival = String(t.节日 || '').trim();
     const festivalName = rawFestival && !['未记', '无', '不详'].includes(rawFestival) ? rawFestival : festival.name;
     const timeCells = [
-        ['纪年', year ? `${era}${chineseNumber(year)}年` : '不详'],
-        ['月日', `${t.月 ? chineseNumber(t.月) + '月' : '不详'}${t.日 ? chineseDay(t.日) : ''}`],
-        ['节气', t.节气 || '未记'],
-        ['时辰', t.时辰 || '未记'],
+        ['纪年', year ? `${era}${chineseNumber(year)}年` : '待推'],
+        ['月日', `${t.月 ? chineseNumber(t.月) + '月' : '待推'}${t.日 ? chineseDay(t.日) : ''}`],
+        ['节气', t.节气 || inferSolarTerm(t.月, t.日)],
+        ['时辰', t.时辰 || '未时'],
         ['备注', t.备注 || '——']
     ];
     const festivalView = Object.assign({}, festival, { name: festivalName });
@@ -6036,8 +6073,8 @@ function checkRow(id, checked, label) {
 }
 
 function worldbookSettingsHTML() {
-    let entries = [];
-    try { entries = getWorldbookEntryList(); } catch (e) { /* ignore */ }
+    if (state.worldbookLoading) return '<div class="lx-field-hint">正在读取当前角色卡绑定的世界书…</div>';
+    const entries = state.worldbookEntryCache || [];
     if (!entries.length) return '<div class="lx-field-hint">当前角色卡没有绑定可读世界书，或酒馆世界书已关闭。</div>';
     return entries.slice(0, 80).map(entry => `<label class="lx-wb-item">
         <input type="checkbox" data-action="wb-toggle" data-wb-id="${escapeAttr(entry.id)}" ${isWorldbookEntryEnabled(entry.id) ? 'checked' : ''}>
@@ -6345,6 +6382,19 @@ function buildSettingsHTML() {
     </div>`;
 }
 
+async function refreshWorldbookEntries(force) {
+    if (state.worldbookLoading) return;
+    if (state.worldbookLoaded && !force) return;
+    if (force) {
+        state.worldbookLoaded = false;
+        state.worldbookEntryCache = [];
+    }
+    const entries = await loadWorldbookEntries();
+    state.worldbookEntryCache = entries;
+    state.worldbookLoaded = true;
+    if (state.ui.settingsOpen) openSettings();
+}
+
 function openSettings() {
     if (!state.refs.settings) return;
     state.refs.settings.innerHTML = buildSettingsHTML();
@@ -6354,6 +6404,7 @@ function openSettings() {
     state.ui.settingsOpen = true;
     applyTheme();
     syncBodyLock();
+    refreshWorldbookEntries();
     try { state.refs.settings.focus({ preventScroll: true }); } catch (e) { /* ignore */ }
 }
 
@@ -6945,12 +6996,12 @@ async function initialFill() {
     }
 }
 
-function openPromptPreview() {
+async function openPromptPreview() {
     if (!state.root) return;
     const old = state.root.querySelector('.lx-reroll-mask');
     if (old) old.remove();
     const doc = state.doc || getDoc();
-    const text = buildPromptPreview();
+    const text = await buildPromptPreview();
     const mask = doc.createElement('div');
     mask.className = 'lx-reroll-mask';
     mask.innerHTML = `<div class="lx-reroll-dialog" style="width:min(92vw,560px);">
@@ -7705,6 +7756,9 @@ function bindTavernEvents() {
         state.pending = null;
         state.initialTried = false;
         state.initialBootTried = false;
+        state.worldbookLoaded = false;
+        state.worldbookEntryCache = [];
+        refreshWorldbookEntries(true);
         userNamesCache = { time: 0, names: [] };
         state.searchQuery = '';
         const search = state.shadow && state.shadow.querySelector('#lx-search-input');
@@ -7760,6 +7814,7 @@ function mount() {
     bindEvents();
     bindTavernEvents();
     startSwipeWatcher();
+    refreshWorldbookEntries(true);
     applyTheme();
     syncViewportVars();
     positionBall();
