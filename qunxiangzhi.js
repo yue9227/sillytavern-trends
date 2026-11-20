@@ -1,4 +1,4 @@
-const VERSION = '0.0.9';
+const VERSION = '0.1.0';
 let userNamesCache = { time: 0, names: [] };
 const HOST_ID = 'lx-group-host';
 const LEGACY_IDS = ['lx-ball', 'lx-panel', 'lx-mask', 'lx-settings', 'lx-group-style'];
@@ -86,6 +86,8 @@ const DEFAULT_SETTINGS = {
     pregnancyModule: false,
     heirModule: false,
     memorialModule: true,
+    courtModule: true,
+    medicalModule: true,
     secretModule: true,
     calendarModule: true,
     struggleModule: true,
@@ -94,6 +96,7 @@ const DEFAULT_SETTINGS = {
     foreshadowAi: true,
     foreshadowUser: true,
     leadGroup: true,
+    followList: [],
     ballSize: 50,
     ballStyle: 'compass',
     ballImage: '',
@@ -122,8 +125,24 @@ const PRESET_DEFAULT = {
 - 流言：0-1 条，要能看出谁在说、对谁说。
 - 书信：0-1 封，没有就空着。
 - 关系：0-1 条，写“甲对乙”的方向。
-- 伏笔：0-1 条；已回收的不要重复。
-- 孕事：模块关闭时不输出；开启时只写有孕后妃。
+- 伏笔：0-1 条；已回收的不要重复。来源写具体姓名/事件名，不写“NPC”。
+- 奏折：0-1 条；写标题、上奏人、主张、反对、状态。
+- 秘辛：0-1 条；写内容、证据、谁知道/谁不知道；李承璟和{{user}}也可以知道。
+- 流言：0-1 条；写来源人物、对谁说、可信度。
+- 斗争：0-1 条；写类型、发起者、目标、手段、阶段、进度。
+- 时令：只按正文日期更新，写年/月/日/节气/时辰。
+- 孕事：模块关闭时不输出；开启时写后妃的孕月、状态、风险。
+- 孕事子女：后妃已生产的孩子；写姓名、性别、身份、生母、亲缘、排行。
+- 子嗣：只写{{user}}。用户写本回次数、受孕判定、孕期月、状态、月事最近、月事周期、月事持续、排卵期、排卵可能、发现、备注；子女写姓名、性别、身份、生母、亲缘、排行、出生、状态。月事和排卵期按世界书/正文/太医记录，没写就写“待定”，不要留空；亲缘按世界书写，不默认亲生。
+
+【朝堂门阀字段】派系：派系名、领袖、成员、主张、资源、目标、敌对、进度、备注。家族：家族、家主、成员、姻亲、世仇、产业、门生、立场、备注。
+【医疗健康字段】只有正文出现伤病/中毒/脉案/用药/太医诊治时才生成；没有就空数组。字段：人物、日期、症状、诊断、方子、太医、忌口、状态、备注。
+【节庆礼仪字段】已合并进时令：节日、礼仪、主礼、地点、座次、禁忌、节目。
+【孕事字段】人物、孕月、状态、风险、胎象、太医、饮食、行动、预计产期、知情者、备注。
+【孕事子女字段】姓名、性别、身份、生母、亲缘、排行、出生、状态、备注。
+【子嗣输出字段】
+子嗣.用户：本回次数、受孕判定、孕期月、状态、月事最近、月事周期、月事持续、排卵期、排卵可能、发现、备注。
+子嗣.子女：姓名、性别、身份、生母、亲缘、排行、出生、状态、备注。
 
 【输出】
 {"NPC状态":{"具名":{"心情":"","位置":"","年龄":"","身份":"","当前所做":""}},"NPC事件":[{"事件名":"","角色":"","内容":"","进度":0,"伏笔":false}],"国家事件":[{"事件名":"","领域":"","内容":"","进度":0,"伏笔":false}],"邻国事件":[{"事件名":"","国家":"","领域":"","内容":"","进度":0,"伏笔":false}],"流言":[{"内容":"","伏笔":false}],"书信":[{"来源":"","内容":""}],"关系":[{"甲":"","乙":"","关系":""}],"伏笔":[{"内容":"","来源":"","已回收":false}]}
@@ -150,8 +169,45 @@ const PRESET_DEFAULT = {
 - 流言：0-2 条，写清谁在说、对谁说、在哪说，带一点口吻。
 - 书信：0-1 封，有称呼/落款更好；没有就空。
 - 关系：0-2 条，写“甲对乙”的方向；双方态度不同写两条。
-- 伏笔：0-2 条，只记重要且未回收的线；与已完成事件有关的必须回收。
-- 孕事：开启时才写；只写有孕后妃，写孕月与状态。
+- 伏笔：0-2 条，只记重要且未回收的线；与已完成事件有关的必须回收。来源写具体姓名/事件名，不写“NPC”。
+- 奏折：0-2 条，朝堂公文；写标题、上奏人、衙门、事由、主张、反对、状态、进度；不是普通事件。
+- 秘辛：0-2 条；写内容、涉及、证据、知情者/不知情者；李承璟和{{user}}也可以知道或不知道。
+- 流言：0-2 条；写来源人物、传播链、可信度；流言不等于事实。
+- 斗争：0-1 条；宫斗/政斗分开；写发起者、目标、手段、烈度、阶段、证据、进度。
+- 时令：正文出现明确日期才更新；写年号/年/月/日/节气/节日/时辰。
+- 孕事：开启时才写；写其他后妃的孕月、状态、风险，不写{{user}}。
+- 孕事子女：后妃已生产的孩子；写姓名、性别、身份、生母、亲缘、排行、出生、状态；不写进子嗣。
+- 子嗣：只写{{user}}。用户字段：本回次数、受孕判定、孕期月、状态、月事最近、月事周期、月事持续、排卵期、排卵可能、发现、备注。子女：姓名、性别、身份、生母、亲缘、排行、出生、状态。月事/排卵期按世界书、正文、太医记录；没有就写“待定”，不能留空；亲缘按世界书，不默认亲生。
+
+【朝堂门阀字段】派系：派系名、领袖、成员、主张、资源、目标、敌对、进度、备注。家族：家族、家主、成员、姻亲、世仇、产业、门生、立场、备注。
+【医疗健康字段】只有正文出现伤病/中毒/脉案/用药/太医诊治时才生成；没有就空数组。字段：人物、日期、症状、诊断、方子、太医、忌口、状态、备注。
+【节庆礼仪字段】已合并进时令：节日、礼仪、主礼、地点、座次、禁忌、节目。
+【孕事字段】人物、孕月、状态、风险、胎象、太医、饮食、行动、预计产期、知情者、备注。
+【孕事子女字段】姓名、性别、身份、生母、亲缘、排行、出生、状态、备注。
+【子嗣输出字段】
+子嗣.用户：本回次数、受孕判定、孕期月、状态、月事最近、月事周期、月事持续、排卵期、排卵可能、发现、备注。
+子嗣.子女：姓名、性别、身份、生母、亲缘、排行、出生、状态、备注。
+
+【字段字典】
+- NPC状态：心情=当下情绪；位置=此刻所在；年龄=数字；身份=位份/官职；当前所做=具体动作，不写“一切如常”。
+- NPC事件：事件名=4-8字固定名；角色=主使/当事人；内容=目标+动作+阻力；进度=0-100；伏笔=是否留线。
+- 国家事件：事件名、领域（内政/军事/外交/灾异/朝议/礼制/刑狱/财政）、内容（决策+执行+后果）、进度、伏笔。
+- 邻国事件：事件名、国家、领域、内容（对方朝廷/边关动作）、进度、伏笔。
+- 奏折：标题、上奏人、衙门、事由、主张、反对、状态（待议/留中/准奏/驳回/已结）、结果、进度。
+- 秘辛：内容、涉及、证据/把柄、知情者[{人物,程度}]、不知情者、来源。程度=全知/部分/怀疑/只知片段。
+- 流言：内容、来源人物、传播链[{人物,版本}]、可信度（真/半真/假/未知）、伏笔。流言不等于事实。
+- 斗争：类型（宫斗/政斗）、事件名、发起者、目标、手段、烈度（低/中/高）、阶段（策划/执行/调查/反制/收场）、证据、知情者、进度、结果。
+- 书信：来源、去向、内容、方向（发/收）、时间；内容带称呼、落款、言外之意。
+- 时令：年号、年、月、日、节气、节日、时辰、备注；只按正文明确日期。
+- 关系：甲、乙、关系；写“甲对乙”的方向，双方态度不同写两条。
+- 伏笔：内容、来源（具体姓名/事件名）、已回收、回收回合；完成的必须回收。
+- 孕事：人物=后妃姓名；孕月=1-10；状态=有孕/稳定/不稳/见红/临盆/已生产/小产/难产；风险=低/中/高或具体风险；胎象=太医脉象/胎动/见红；太医=负责太医；饮食=忌口/安胎药；行动=静养/禁足/卧床；预计产期=日期或“未定”；知情者=[{人物,程度}]；备注。
+- 孕事子女：姓名、性别、身份（太子/太女/王爷/公主/皇子/皇女）、生母、亲缘（按世界书）、排行、出生、状态（在世/夭折/过继）、备注。
+- 朝堂门阀：派系名、领袖、成员、主张、资源、目标、敌对、进度；家族、家主、成员、姻亲、世仇、产业、门生、立场。
+- 医疗健康（有才写）：人物、日期、症状、诊断、方子、太医、忌口、状态、备注；只有正文出现伤病/中毒/脉案/用药/太医诊治才写，没有就空数组；与孕事分开，孕事仍走孕事页。
+- 节庆礼仪：已并入时令，写节日、礼仪、主礼、地点、座次、禁忌、节目。
+- 子嗣.用户：本回次数=本回新增；受孕判定=未定/可能/已确认/未受孕；孕期月=0-10；状态=未孕/有孕/临盆/已生产/小产；月事最近=日期或“待定”；月事周期=天数；月事持续=天数；排卵期=日期范围或“周期第X-Y天”；排卵可能=高/中/低/未知；发现=[{人物,程度}]；备注。
+- 子嗣.子女：姓名、性别、身份、生母、亲缘、排行、出生、状态、备注；只写{{user}}名下孩子，亲缘不默认亲生。
 
 【输出结构】
 {"NPC状态":{"具名":{"心情":"","位置":"","年龄":"","身份":"","当前所做":""}},"NPC事件":[{"事件名":"","角色":"","内容":"","进度":0,"伏笔":false}],"国家事件":[{"事件名":"","领域":"","内容":"","进度":0,"伏笔":false}],"邻国事件":[{"事件名":"","国家":"","领域":"","内容":"","进度":0,"伏笔":false}],"流言":[{"内容":"","伏笔":false}],"书信":[{"来源":"","内容":""}],"关系":[{"甲":"","乙":"","关系":""}],"伏笔":[{"内容":"","来源":"","已回收":false}]}
@@ -183,8 +239,45 @@ NPC状态不设上限（只写有变化/值得续写的人）；NPC事件 1-3 �
 - 流言：0-3 条，能看出传播路径与口吻；流言不等于事实。
 - 书信：0-2 封，含称呼、落款、言外之意；没有就空。
 - 关系：0-3 条，写“甲对乙”的方向；态度变化要写清因为哪件事。
-- 伏笔：0-3 条，只记重要未回收线；完成的必须回收，并写清回收方式。
-- 孕事：开启时才写；只写有孕后妃，孕月、状态、风险。
+- 伏笔：0-3 条，只记重要未回收线；完成的必须回收，并写清回收方式。来源写具体姓名/事件名，不写“NPC”。
+- 奏折：1-3 条，朝堂公文；写标题、上奏人、衙门、事由、主张、反对、状态、结果、进度；要能看出谁得利、谁反对。
+- 秘辛：0-2 条；写内容、涉及、证据/把柄、知情者（全知/部分/怀疑/只知片段）、不知情者；李承璟和{{user}}也可以知道或不知道。
+- 流言：0-3 条；写来源人物、传播链 2-4 人、版本变化、可信度；流言不等于事实。
+- 斗争：0-2 条；宫斗/政斗分开；写类型、发起者、目标、手段、烈度、阶段、证据、知情者、进度、结果；没有动机不要硬造。
+- 时令：只按正文明确日期更新；写年号/年/月/日/节气/节日/时辰/备注；不要自己推季节。
+- 孕事：开启时才写；写其他后妃的孕月、状态、风险、太医/宫人反应；{{user}}的孕事不写这里。
+- 孕事子女：后妃已生产的孩子；写姓名、性别、身份、生母、亲缘（按世界书）、排行、出生、状态；不写进子嗣。
+- 子嗣：只写{{user}}。用户字段：本回次数（只写新增）、受孕判定、孕期月、状态、月事最近、月事周期、月事持续、排卵期、排卵可能、发现、备注；子女字段：姓名、性别、身份、生母、亲缘、排行、出生、状态、备注。月事/排卵期按世界书/正文/太医记录详细写，没有就写“待定”，不能留空；亲缘按世界书写亲生/养子/过继/庶出/嫡出/不详，不默认亲生。
+
+【朝堂门阀字段】派系：派系名、领袖、成员、主张、资源、目标、敌对、进度、备注。家族：家族、家主、成员、姻亲、世仇、产业、门生、立场、备注。
+【医疗健康字段】只有正文出现伤病/中毒/脉案/用药/太医诊治时才生成；没有就空数组。字段：人物、日期、症状、诊断、方子、太医、忌口、状态、备注。
+【节庆礼仪字段】已合并进时令：节日、礼仪、主礼、地点、座次、禁忌、节目。
+【孕事字段】人物、孕月、状态、风险、胎象、太医、饮食、行动、预计产期、知情者、备注。
+【孕事子女字段】姓名、性别、身份、生母、亲缘、排行、出生、状态、备注。
+【子嗣输出字段】
+子嗣.用户：本回次数、受孕判定、孕期月、状态、月事最近、月事周期、月事持续、排卵期、排卵可能、发现、备注。
+子嗣.子女：姓名、性别、身份、生母、亲缘、排行、出生、状态、备注。
+
+【字段字典】
+- NPC状态：心情=当下情绪；位置=此刻所在；年龄=数字；身份=位份/官职；当前所做=具体动作，不写“一切如常”。
+- NPC事件：事件名=4-8字固定名；角色=主使/当事人；内容=目标+动作+阻力；进度=0-100；伏笔=是否留线。
+- 国家事件：事件名、领域（内政/军事/外交/灾异/朝议/礼制/刑狱/财政）、内容（决策+执行+后果）、进度、伏笔。
+- 邻国事件：事件名、国家、领域、内容（对方朝廷/边关动作）、进度、伏笔。
+- 奏折：标题、上奏人、衙门、事由、主张、反对、状态（待议/留中/准奏/驳回/已结）、结果、进度。
+- 秘辛：内容、涉及、证据/把柄、知情者[{人物,程度}]、不知情者、来源。程度=全知/部分/怀疑/只知片段。
+- 流言：内容、来源人物、传播链[{人物,版本}]、可信度（真/半真/假/未知）、伏笔。流言不等于事实。
+- 斗争：类型（宫斗/政斗）、事件名、发起者、目标、手段、烈度（低/中/高）、阶段（策划/执行/调查/反制/收场）、证据、知情者、进度、结果。
+- 书信：来源、去向、内容、方向（发/收）、时间；内容带称呼、落款、言外之意。
+- 时令：年号、年、月、日、节气、节日、时辰、备注；只按正文明确日期。
+- 关系：甲、乙、关系；写“甲对乙”的方向，双方态度不同写两条。
+- 伏笔：内容、来源（具体姓名/事件名）、已回收、回收回合；完成的必须回收。
+- 孕事：人物=后妃姓名；孕月=1-10；状态=有孕/稳定/不稳/见红/临盆/已生产/小产/难产；风险=低/中/高或具体风险；胎象=太医脉象/胎动/见红；太医=负责太医；饮食=忌口/安胎药；行动=静养/禁足/卧床；预计产期=日期或“未定”；知情者=[{人物,程度}]；备注。
+- 孕事子女：姓名、性别、身份（太子/太女/王爷/公主/皇子/皇女）、生母、亲缘（按世界书）、排行、出生、状态（在世/夭折/过继）、备注。
+- 朝堂门阀：派系名、领袖、成员、主张、资源、目标、敌对、进度；家族、家主、成员、姻亲、世仇、产业、门生、立场。
+- 医疗健康（有才写）：人物、日期、症状、诊断、方子、太医、忌口、状态、备注；只有正文出现伤病/中毒/脉案/用药/太医诊治才写，没有就空数组；与孕事分开，孕事仍走孕事页。
+- 节庆礼仪：已并入时令，写节日、礼仪、主礼、地点、座次、禁忌、节目。
+- 子嗣.用户：本回次数=本回新增；受孕判定=未定/可能/已确认/未受孕；孕期月=0-10；状态=未孕/有孕/临盆/已生产/小产；月事最近=日期或“待定”；月事周期=天数；月事持续=天数；排卵期=日期范围或“周期第X-Y天”；排卵可能=高/中/低/未知；发现=[{人物,程度}]；备注。
+- 子嗣.子女：姓名、性别、身份、生母、亲缘、排行、出生、状态、备注；只写{{user}}名下孩子，亲缘不默认亲生。
 
 【输出结构】
 {"NPC状态":{"具名":{"心情":"","位置":"","年龄":"","身份":"","当前所做":""}},"NPC事件":[{"事件名":"","角色":"","内容":"","进度":0,"伏笔":false}],"国家事件":[{"事件名":"","领域":"","内容":"","进度":0,"伏笔":false}],"邻国事件":[{"事件名":"","国家":"","领域":"","内容":"","进度":0,"伏笔":false}],"流言":[{"内容":"","伏笔":false}],"书信":[{"来源":"","内容":""}],"关系":[{"甲":"","乙":"","关系":""}],"伏笔":[{"内容":"","来源":"","已回收":false}]}
@@ -223,6 +316,8 @@ const state = {
     ui: {
         tab: 'NPC状态',
         settingsTab: 'basic',
+        batchOn: false,
+        batchKeys: new Set(),
         struggleFilter: '全部',
         panelOpen: false,
         settingsOpen: false,
@@ -553,6 +648,12 @@ function normalizeTime(raw) {
         日: clamp(toInt(t.日, 0), 0, 31),
         节气: String(t.节气 || '').trim().slice(0, 10),
         节日: String(t.节日 || '').trim().slice(0, 20),
+        礼仪: String(t.礼仪 || '').trim().slice(0, 30),
+        主礼: String(t.主礼 || '').trim().slice(0, 40),
+        地点: String(t.地点 || '').trim().slice(0, 40),
+        座次: String(t.座次 || '').trim().slice(0, 80),
+        禁忌: String(t.禁忌 || '').trim().slice(0, 80),
+        节目: String(t.节目 || '').trim().slice(0, 120),
         时辰: String(t.时辰 || '').trim().slice(0, 10),
         备注: String(t.备注 || '').trim().slice(0, 120)
     };
@@ -716,6 +817,13 @@ function normalizePregnancy(item, round) {
         人物: person,
         孕月: month,
         状态: status || (ended ? '已结束' : '有孕'),
+        风险: String(item.风险 || item.稳不稳 || '').trim().slice(0, 20),
+        胎象: String(item.胎象 || item.脉象 || '').trim().slice(0, 80),
+        太医: String(item.太医 || item.医者 || '').trim().slice(0, 40),
+        饮食: String(item.饮食 || '').trim().slice(0, 80),
+        行动: String(item.行动 || item.行动限制 || '').trim().slice(0, 80),
+        预计产期: String(item.预计产期 || item.产期 || '').trim().slice(0, 30),
+        知情者: normalizeKnowers(item.知情者 || item.发现 || []),
         备注: note,
         已结束: ended,
         回合: toInt(item.回合, round || 0) || 0
@@ -796,6 +904,11 @@ function normalizeData(raw) {
         .map(item => normalizeChild(item, 0))
         .filter(Boolean);
 
+    out.朝堂门阀 = normalizeCourt(out.朝堂门阀, 0);
+    out.医疗健康 = (Array.isArray(out.医疗健康) ? out.医疗健康 : [])
+        .map(item => normalizeHealth(item, 0))
+        .filter(Boolean);
+
     out.子嗣 = normalizeHeir(out.子嗣, 0);
 
     const era = isPlainObject(out.纪年) ? out.纪年 : {};
@@ -818,7 +931,8 @@ function hasContent(fresh) {
         if (user.本回次数 || user.内射次数 || user.受孕判定 || user.孕期月 || user.月事最近 || user.排卵期 || user.状态 && user.状态 !== '未孕') return true;
         if (Array.isArray(fresh.子嗣.子女) && fresh.子嗣.子女.length) return true;
     }
-    return ['NPC事件', '国家事件', '邻国事件', '流言', '书信', '关系', '伏笔', '孕事', '孕事子女', '奏折', '秘辛', '斗争']
+    if (isPlainObject(fresh.朝堂门阀) && ((fresh.朝堂门阀.派系 || []).length || (fresh.朝堂门阀.家族 || []).length)) return true;
+    return ['NPC事件', '国家事件', '邻国事件', '流言', '书信', '关系', '伏笔', '孕事', '孕事子女', '奏折', '秘辛', '斗争', '医疗健康']
         .some(key => Array.isArray(fresh[key]) && fresh[key].length > 0);
 }
 
@@ -863,7 +977,7 @@ function normalizeSettings(raw) {
     out.maxTokens = clamp(toInt(out.maxTokens, 4000), 200, 8000);
     out.debug = isTrue(out.debug);
     out.theme = THEMES[out.theme] ? out.theme : 'A';
-    ['injectEvents', 'injectNpc', 'injectRumors', 'injectLetters', 'injectForeshadow', 'injectRelations', 'injectTimeline', 'pregnancyModule', 'heirModule', 'foreshadowAi', 'foreshadowUser', 'leadGroup', 'memorialModule', 'secretModule', 'calendarModule', 'struggleModule'].forEach(key => {
+    ['injectEvents', 'injectNpc', 'injectRumors', 'injectLetters', 'injectForeshadow', 'injectRelations', 'injectTimeline', 'pregnancyModule', 'heirModule', 'foreshadowAi', 'foreshadowUser', 'leadGroup', 'memorialModule', 'courtModule', 'medicalModule', 'secretModule', 'calendarModule', 'struggleModule'].forEach(key => {
         out[key] = out[key] !== false;
     });
     out.ballSize = clamp(toInt(out.ballSize, 50), 36, 84);
@@ -880,6 +994,7 @@ function normalizeSettings(raw) {
         x: (pos.x === null || pos.x === undefined || pos.x === '' || !Number.isFinite(Number(pos.x))) ? null : clamp(Number(pos.x), 0, 1),
         y: (pos.y === null || pos.y === undefined || pos.y === '' || !Number.isFinite(Number(pos.y))) ? 0.28 : clamp(Number(pos.y), 0, 1)
     };
+    out.followList = Array.isArray(out.followList) ? out.followList.map(cleanName).filter(Boolean).slice(0, 30) : [];
     return out;
 }
 
@@ -921,7 +1036,7 @@ function saveSettings(patch) {
     }
 }
 
-const PRESET_REVISION = 2;
+const PRESET_REVISION = 5;
 const BUILTIN_PRESETS = ['精简', '正常', '详细'];
 
 function getPresets() {
@@ -1445,12 +1560,84 @@ function mergePregnancies(oldList, newList, round) {
         }
         old.孕月 = Math.max(old.孕月 || 0, record.孕月 || 0);
         old.状态 = record.状态 || old.状态;
-        old.备注 = record.备注 || old.备注;
+        ['风险', '胎象', '太医', '饮食', '行动', '预计产期', '备注'].forEach(key => {
+            if (record[key]) old[key] = record[key];
+        });
+        if (record.知情者 && record.知情者.length) {
+            old.知情者 = normalizeKnowers((old.知情者 || []).concat(record.知情者));
+        }
         old.已结束 = old.已结束 || record.已结束;
         old.回合 = old.回合 || round;
         map.set(record.人物, old);
     });
     return Array.from(map.values());
+}
+
+function normalizeNameList(value) {
+    if (Array.isArray(value)) return value.map(v => cleanName(v)).filter(Boolean);
+    return String(value || '').split(/[,，、\s]+/).map(cleanName).filter(Boolean);
+}
+
+function normalizeFaction(item, round) {
+    if (!isPlainObject(item)) return null;
+    const name = String(item.派系名 || item.名称 || '').trim();
+    if (!name) return null;
+    return {
+        派系名: name.slice(0, 30),
+        领袖: cleanName(item.领袖 || item.首领 || ''),
+        成员: normalizeNameList(item.成员),
+        主张: String(item.主张 || '').trim().slice(0, 100),
+        资源: String(item.资源 || '').trim().slice(0, 80),
+        目标: String(item.目标 || '').trim().slice(0, 100),
+        敌对: normalizeNameList(item.敌对 || item.敌对派系),
+        进度: clamp(toInt(item.进度, 0), 0, 100),
+        备注: String(item.备注 || '').trim().slice(0, 160),
+        回合: toInt(item.回合, round || 0) || 0
+    };
+}
+
+function normalizeClan(item, round) {
+    if (!isPlainObject(item)) return null;
+    const name = String(item.家族 || item.名称 || '').trim();
+    if (!name) return null;
+    return {
+        家族: name.slice(0, 30),
+        家主: cleanName(item.家主 || ''),
+        成员: normalizeNameList(item.成员),
+        姻亲: String(item.姻亲 || '').trim().slice(0, 80),
+        世仇: String(item.世仇 || '').trim().slice(0, 80),
+        产业: String(item.产业 || '').trim().slice(0, 100),
+        门生: normalizeNameList(item.门生),
+        立场: String(item.立场 || '').trim().slice(0, 60),
+        备注: String(item.备注 || '').trim().slice(0, 160),
+        回合: toInt(item.回合, round || 0) || 0
+    };
+}
+
+function normalizeCourt(raw, round) {
+    const obj = isPlainObject(raw) ? raw : {};
+    return {
+        派系: (Array.isArray(obj.派系) ? obj.派系 : []).map(item => normalizeFaction(item, round)).filter(Boolean),
+        家族: (Array.isArray(obj.家族) ? obj.家族 : []).map(item => normalizeClan(item, round)).filter(Boolean)
+    };
+}
+
+function normalizeHealth(item, round) {
+    if (!isPlainObject(item)) return null;
+    const person = cleanName(item.人物 || item.姓名 || '');
+    if (!person) return null;
+    return {
+        人物: person,
+        日期: String(item.日期 || item.时间 || '').trim().slice(0, 30),
+        症状: String(item.症状 || item.病情 || '').trim().slice(0, 100),
+        诊断: String(item.诊断 || item.脉案 || '').trim().slice(0, 120),
+        方子: String(item.方子 || item.药方 || '').trim().slice(0, 120),
+        太医: cleanName(item.太医 || item.医者 || ''),
+        忌口: String(item.忌口 || '').trim().slice(0, 80),
+        状态: String(item.状态 || '在治').trim().slice(0, 20),
+        备注: String(item.备注 || '').trim().slice(0, 160),
+        回合: toInt(item.回合, round || 0) || 0
+    };
 }
 
 function normalizeHeirUser(raw, round) {
@@ -1554,6 +1741,48 @@ function deriveMenstrualCycle(heir, calendar) {
     user.排卵期 = `周期第${ovStart}-${ovEnd}天`;
     user.排卵可能 = day >= ovStart && day <= ovEnd ? '高' : (day <= 5 ? '低' : '中');
     return data;
+}
+
+function mergeCourt(oldCourt, freshCourt, round) {
+    const old = normalizeCourt(oldCourt, 0);
+    const fresh = normalizeCourt(freshCourt, round);
+    const mergeList = (oldList, newList, keyName) => {
+        const map = new Map();
+        oldList.forEach(item => map.set(item[keyName], item));
+        newList.forEach(item => {
+            const key = item[keyName];
+            const prev = map.get(key);
+            if (!prev) { item.回合 = item.回合 || round; map.set(key, item); return; }
+            ['领袖', '主张', '资源', '目标', '立场', '备注'].forEach(k => { if (item[k]) prev[k] = item[k]; });
+            prev.成员 = Array.from(new Set([...(prev.成员 || []), ...(item.成员 || [])]));
+            prev.敌对 = Array.from(new Set([...(prev.敌对 || []), ...(item.敌对 || [])]));
+            prev.门生 = Array.from(new Set([...(prev.门生 || []), ...(item.门生 || [])]));
+            ['姻亲', '世仇', '产业'].forEach(k => { if (item[k]) prev[k] = item[k]; });
+            prev.进度 = Math.max(prev.进度 || 0, item.进度 || 0);
+        });
+        return Array.from(map.values());
+    };
+    return {
+        派系: mergeList(old.派系, fresh.派系, '派系名'),
+        家族: mergeList(old.家族, fresh.家族, '家族')
+    };
+}
+
+function mergeHealth(oldList, newList, round) {
+    const map = new Map();
+    (Array.isArray(oldList) ? oldList : []).forEach(item => {
+        const record = normalizeHealth(item, 0);
+        if (record) map.set(record.人物 + '|' + record.日期 + '|' + record.症状, record);
+    });
+    (Array.isArray(newList) ? newList : []).forEach(item => {
+        const record = normalizeHealth(item, round);
+        if (!record) return;
+        const key = record.人物 + '|' + record.日期 + '|' + record.症状;
+        const old = map.get(key);
+        if (!old) { record.回合 = round; map.set(key, record); return; }
+        ['诊断', '方子', '太医', '忌口', '状态', '备注'].forEach(k => { if (record[k]) old[k] = record[k]; });
+    });
+    return Array.from(map.values());
 }
 
 function mergePregnancyChildren(oldList, newList, round) {
@@ -1704,8 +1933,17 @@ function mergeGroupData(oldData, fresh) {
     out.书信 = mergeLetters(out.书信, fresh.书信, round);
     out.关系 = mergeRelations(out.关系, fresh.关系);
     out.伏笔 = mergeForeshadow(out.伏笔, fresh.伏笔);
+    // 伏笔来源不要只写“NPC”：能从已知人物名里认出来的，补成具体姓名。
+    const knownNames = Object.keys(out.NPC状态 || {}).filter(name => !isBlacklisted(name));
+    out.伏笔.forEach(item => {
+        if (item.来源 && !['未记名', '手动', 'NPC', '群像', '剧情'].includes(item.来源)) return;
+        const hit = knownNames.find(name => name.length >= 2 && String(item.内容 || '').includes(name));
+        if (hit) item.来源 = hit;
+    });
     out.孕事 = mergePregnancies(out.孕事, fresh.孕事, round);
     out.孕事子女 = mergePregnancyChildren(out.孕事子女, fresh.孕事子女, round);
+    out.朝堂门阀 = mergeCourt(out.朝堂门阀, fresh.朝堂门阀, round);
+    out.医疗健康 = mergeHealth(out.医疗健康, fresh.医疗健康, round);
     if (getSettings().pregnancyModule) {
         out.孕事 = derivePregnancies(out.NPC状态, out.孕事, round);
     }
@@ -1769,7 +2007,7 @@ function buildEventContext() {
     if (data.时令 && (data.时令.月 || data.时令.节气 || data.时令.节日)) {
         const t = data.时令;
         const date = [t.年号 && t.年 ? t.年号 + t.年 + '年' : '', t.月 ? t.月 + '月' : '', t.日 ? t.日 + '日' : ''].filter(Boolean).join('');
-        push(`[时令] ${date}${t.节气 ? '·' + t.节气 : ''}${t.节日 ? '·' + t.节日 : ''}${t.时辰 ? '·' + t.时辰 : ''}`);
+        push(`[时令] ${date}${t.节气 ? '·' + t.节气 : ''}${t.节日 ? '·' + t.节日 : ''}${t.礼仪 ? '·' + t.礼仪 : ''}${t.主礼 ? '·主礼' + t.主礼 : ''}${t.时辰 ? '·' + t.时辰 : ''}`);
     }
     if (s.injectEvents) {
         ['NPC事件', '国家事件', '邻国事件'].forEach(key => {
@@ -1787,6 +2025,19 @@ function buildEventContext() {
         });
         (Array.isArray(data.斗争) ? data.斗争 : []).filter(x => getProgressNum(x) < 100).forEach(x => {
             if (x.事件名) push(`[${x.类型 || '斗争'}] ${x.事件名}（${x.阶段 || '进行中'}）`);
+        });
+    }
+    if (s.courtModule) {
+        ((data.朝堂门阀 && data.朝堂门阀.派系) || []).forEach(item => {
+            if (item.派系名) push(`[朝堂派系] ${item.派系名}：领袖${item.领袖 || '未记'}，${item.主张 || ''}`);
+        });
+        ((data.朝堂门阀 && data.朝堂门阀.家族) || []).forEach(item => {
+            if (item.家族) push(`[门阀] ${item.家族}：家主${item.家主 || '未记'}，${item.立场 || ''}`);
+        });
+    }
+    if (s.medicalModule) {
+        (Array.isArray(data.医疗健康) ? data.医疗健康 : []).slice(-6).forEach(item => {
+            if (item.人物) push(`[医疗] ${item.人物}：${item.症状 || ''}${item.诊断 ? '，' + item.诊断 : ''}`);
         });
     }
     if (s.injectTimeline) {
@@ -1891,6 +2142,8 @@ function buildExtraModulesPrompt() {
     if (!s.secretModule) off.push('秘辛');
     if (!s.calendarModule) off.push('时令');
     if (!s.struggleModule) off.push('斗争');
+    if (!s.courtModule) off.push('朝堂门阀');
+    if (!s.medicalModule) off.push('医疗健康');
     if (!s.pregnancyModule) off.push('孕事/孕事子女');
     if (!s.heirModule) off.push('子嗣');
 
@@ -1900,8 +2153,10 @@ function buildExtraModulesPrompt() {
 - 流言（0-2 条）：除了内容，还要写来源人物、传播链（谁传给谁、版本变成什么）、可信度（真/半真/假/未知）。传播链 2-4 人即可。
 - 孕事：只记后妃/其他 NPC 的有孕月份与状态；{{user}} 的孕事写在“子嗣.用户”里，不要混进孕事。后妃已经生产、世界书里已有孩子的，必须写进“孕事子女”；生母写后妃名，亲缘按世界书写（亲生/养子/过继/庶出/嫡出/不详），不要默认亲生。
 - 伏笔：来源必须写具体姓名或具体事件名，例如“淑妃”“太学暗账”；不要写“NPC”“群像”“剧情”这种分类。来源确实不明写“未记名”。
-- 时令：只有正文出现明确日期、节气、节日、时辰时才更新。写年号、年、月、日、节气、节日、时辰、备注；没有就留空对象。
+- 时令（含节庆礼仪）：只有正文出现明确日期、节气、节日、时辰、礼仪时才更新。写年号、年、月、日、节气、节日、礼仪、主礼、地点、座次、禁忌、节目、时辰、备注；没有就留空对象。节庆礼仪合并在这里，不另开模块。
 - 斗争（0-2 条）：宫斗或政斗。只在有明确动机、利益冲突、行动条件时记录；不要每回硬造。写类型（宫斗/政斗）、事件名、发起者、目标、手段、烈度（低/中/高）、阶段（策划/执行/调查/反制/收场）、证据、知情者、进度、结果。结果开放，不保证成功；不替{{user}}决定中计、受伤、失宠或站队；信息有限，不知道的人不要写成知道。
+- 朝堂门阀：分「派系」和「家族」两段。派系写派系名、领袖、成员、主张、资源、目标、敌对、进度；家族写家族、家主、成员、姻亲、世仇、产业、门生、立场。没有变化可省略，但已有派系/家族被提到时要更新。
+- 医疗健康（**有才生成**）：只有正文出现伤病、中毒、脉案、用药、太医诊治、孕产异常时才写；没有就留空数组，不要每回硬编。写人物、日期、症状、诊断、方子、太医、忌口、状态、备注。普通心情、普通请安不算医案；孕事仍走孕事页。
 - 子嗣（仅在模块开启时）：{{user}} 是玩家，在酒馆里会自动替换成人设名字；不管正文用什么名字，子嗣.用户 始终是玩家本人。模块开启时这个对象必须出现；没有变化就照抄当前累计/孕期/状态，不要漏掉。
 - 用户字段：本回次数（只写本回新增，累计由程序加）、受孕判定（未定/可能/已确认/未受孕）、孕期月（0-10）、状态（未孕/有孕/临盆/已生产/小产）、月事最近（日期/“未记”）、月事周期（天，世界书没写就 0）、月事持续（天，没写就 0）、排卵期（日期范围或“未记”）、排卵可能（高/中/低/未知）、发现（谁逐渐知道、知道多少）、备注。月事和排卵期按世界书、正文或太医记录写，不要自己编固定周期。
 - 子女：只写记在{{user}}名下的孩子，只在出生后写。是否亲生、养子、过继、庶出、嫡出按世界书/正文写进“亲缘”，不要默认亲生。字段：姓名、性别、身份（太子/太女/王爷/公主/皇子/皇女）、生母、亲缘、排行、出生、状态（在世/夭折/过继）、备注；不要提前写未出生孩子的性别和封号。后妃所出的孩子写到“孕事子女”，不要写进子嗣。
@@ -1921,8 +2176,10 @@ function buildExtraModulesPrompt() {
 "奏折":[{"标题":"","上奏人":"","衙门":"","事由":"","主张":"","反对":"","状态":"待议","结果":"","进度":0}],
 "秘辛":[{"内容":"","涉及":"","知情者":[{"人物":"","程度":"部分"}],"不知情者":[""],"证据":"","来源":""}],
 "流言":[{"内容":"","来源人物":"","传播链":[{"人物":"","版本":""}],"可信度":"未知","伏笔":false}],
-"时令":{"年号":"","年":0,"月":0,"日":0,"节气":"","节日":"","时辰":"","备注":""},
+"时令":{"年号":"","年":0,"月":0,"日":0,"节气":"","节日":"","礼仪":"","主礼":"","地点":"","座次":"","禁忌":"","节目":"","时辰":"","备注":""},
 "斗争":[{"类型":"宫斗","事件名":"","发起者":"","目标":"","手段":"","烈度":"低","阶段":"策划","证据":"","知情者":[{"人物":"","程度":"部分"}],"进度":0,"结果":""}],
+"朝堂门阀":{"派系":[{"派系名":"","领袖":"","成员":[],"主张":"","资源":"","目标":"","敌对":[],"进度":0,"备注":""}],"家族":[{"家族":"","家主":"","成员":[],"姻亲":"","世仇":"","产业":"","门生":[],"立场":"","备注":""}]},
+"医疗健康":[{"人物":"","日期":"","症状":"","诊断":"","方子":"","太医":"","忌口":"","状态":"在治","备注":""}],
 "孕事子女":[{"姓名":"","性别":"男/女","身份":"","生母":"","亲缘":"不详","排行":1,"出生":"","状态":"在世","备注":""}],
 "子嗣":{"用户":{"本回次数":0,"受孕判定":"未定","孕期月":0,"状态":"未孕","月事最近":"","月事周期":0,"月事持续":0,"排卵期":"","排卵可能":"","发现":[{"人物":"","程度":""}],"备注":""},"子女":[{"姓名":"","性别":"男","身份":"皇子","生母":"","亲缘":"不详","排行":1,"出生":"","状态":"在世","备注":""}]}
 ${off.length ? '【本回关闭】' + off.join('、') + ' 对应字段留空，不要输出。' : ''}`;
@@ -1933,8 +2190,12 @@ function buildEnabledModulesPrompt() {
     const on = [];
     if (s.pregnancyModule) on.push('孕事 + 孕事子女');
     if (s.heirModule) on.push('子嗣（用户 + 子女）');
+    if (s.courtModule) on.push('朝堂门阀');
     if (!on.length) return '';
-    return `\n\n【本回必须输出】${on.join('、')}。对应字段即使没有变化也必须出现；没有内容就输出空数组/当前状态，不要整块省略。\n`;
+    const medicalNote = s.medicalModule
+        ? '\n医疗健康是条件模块：只有正文出现伤病、中毒、脉案、用药、太医诊治时才写；没有就留空数组，不要硬编。'
+        : '';
+    return `\n\n【本回必须输出】${on.join('、')}。对应字段即使没有变化也必须出现；没有内容就输出空数组/当前状态，不要整块省略。${medicalNote}\n`;
 }
 
 function buildModuleHandbook() {
@@ -1942,6 +2203,26 @@ function buildModuleHandbook() {
     if (level === '精简') {
         return `\n\n【模块补充】NPC状态不设上限，只写有变化的人；事件要有名有进度；奏折写主张/反对/状态；秘辛写知情与不知情；流言写来源/传播/可信度；斗争写动机/手段/阶段；时令只按正文日期；关系写方向；伏笔未回收；孕事写后妃孕月/状态/孕事子女；子嗣只写{{user}}，月事/排卵按世界书，亲缘不默认亲生。`;
     }
+    const fieldDict = level === '详细' ? `\n【字段字典】
+- NPC状态：心情=当下情绪；位置=此刻所在；年龄=数字；身份=位份/官职；当前所做=具体动作，不写“一切如常”。
+- NPC事件：事件名=4-8字固定名；角色=主使/当事人；内容=目标+动作+阻力；进度=0-100；伏笔=是否留线。
+- 国家事件：事件名、领域（内政/军事/外交/灾异/朝议/礼制/刑狱/财政）、内容（决策+执行+后果）、进度、伏笔。
+- 邻国事件：事件名、国家、领域、内容（对方朝廷/边关动作）、进度、伏笔。
+- 奏折：标题、上奏人、衙门、事由、主张、反对、状态（待议/留中/准奏/驳回/已结）、结果、进度。
+- 秘辛：内容、涉及、证据/把柄、知情者[{人物,程度}]、不知情者、来源。程度=全知/部分/怀疑/只知片段。
+- 流言：内容、来源人物、传播链[{人物,版本}]、可信度（真/半真/假/未知）、伏笔。流言不等于事实。
+- 斗争：类型（宫斗/政斗）、事件名、发起者、目标、手段、烈度（低/中/高）、阶段（策划/执行/调查/反制/收场）、证据、知情者、进度、结果。
+- 书信：来源、去向、内容、方向（发/收）、时间；内容带称呼、落款、言外之意。
+- 时令：年号、年、月、日、节气、节日、时辰、备注；只按正文明确日期。
+- 关系：甲、乙、关系；写“甲对乙”的方向，双方态度不同写两条。
+- 伏笔：内容、来源（具体姓名/事件名）、已回收、回收回合；完成的必须回收。
+- 孕事：人物=后妃姓名；孕月=1-10；状态=有孕/稳定/不稳/见红/临盆/已生产/小产/难产；风险=低/中/高或具体风险；胎象=太医脉象/胎动/见红；太医=负责太医；饮食=忌口/安胎药；行动=静养/禁足/卧床；预计产期=日期或“未定”；知情者=[{人物,程度}]；备注。
+- 孕事子女：姓名、性别、身份（太子/太女/王爷/公主/皇子/皇女）、生母、亲缘（按世界书）、排行、出生、状态（在世/夭折/过继）、备注。
+- 朝堂门阀：派系名、领袖、成员、主张、资源、目标、敌对、进度；家族、家主、成员、姻亲、世仇、产业、门生、立场。
+- 医疗健康（有才写）：人物、日期、症状、诊断、方子、太医、忌口、状态、备注；只有正文出现伤病/中毒/脉案/用药/太医诊治才写，没有就空数组；与孕事分开，孕事仍走孕事页。
+- 节庆礼仪：已并入时令，写节日、礼仪、主礼、地点、座次、禁忌、节目。
+- 子嗣.用户：本回次数=本回新增；受孕判定=未定/可能/已确认/未受孕；孕期月=0-10；状态=未孕/有孕/临盆/已生产/小产；月事最近=日期或“待定”；月事周期=天数；月事持续=天数；排卵期=日期范围或“周期第X-Y天”；排卵可能=高/中/低/未知；发现=[{人物,程度}]；备注。
+- 子嗣.子女：姓名、性别、身份、生母、亲缘、排行、出生、状态、备注；只写{{user}}名下孩子，亲缘不默认亲生。` : (level === '正常' ? `\n【字段】每个模块按“人物/时间/状态/证据/进度”落到具体字段；孕事写风险、胎象、太医、饮食、行动、预计产期、知情者；子嗣写月事、周期、持续、排卵期、排卵可能、亲缘。` : `\n【字段】每个模块至少填人物、时间、状态、进度；孕事写全风险/胎象/太医/饮食/行动/产期/知情者；子嗣写全月事/排卵/亲缘。`);
     const detail = level === '详细' ? `\n【详细档额外要求】
 - NPC状态每个人至少写：心情、位置、年龄、身份、当前所做，并说明与主线的关系；没出场的人写他此刻在做什么。
 - NPC事件每条写：目标、动作、阻力、下一步、进度；至少一条来自未出场 NPC。
@@ -1961,10 +2242,13 @@ function buildModuleHandbook() {
 - 秘辛：内容、涉及、证据、知情者/不知情者；{{user}}和李承璟也可能知道。
 - 流言：来源、传播链、可信度；不要写成事实。
 - 斗争：类型、发起者、目标、手段、烈度、阶段、证据、进度。
+- 朝堂门阀：派系（领袖/成员/主张/资源/目标/敌对/进度）、家族（家主/成员/姻亲/世仇/产业/门生/立场）。
+- 医疗健康（有才写）：伤病/中毒/脉案/用药/太医诊治才生成；没有就空数组。人物、日期、症状、诊断、方子、太医、忌口、状态；孕事仍走孕事页。
+- 时令/节庆礼仪：日期、节气、节日、礼仪、主礼、地点、座次、禁忌、节目、时辰。
 - 书信：称呼、落款、言外之意；时令：日期、节气、节日、时辰。
 - 关系：甲对乙的方向；伏笔：未回收/已回收。
 - 孕事：只写其他后妃的孕月、状态、风险；已出生子女写“孕事子女”。
-- 子嗣：只写{{user}}；月事、周期、持续、排卵期、排卵可能按世界书/正文/太医记录；亲缘按世界书，不默认亲生。${detail}`;
+- 子嗣：只写{{user}}；月事、周期、持续、排卵期、排卵可能按世界书/正文/太医记录；亲缘按世界书，不默认亲生。${fieldDict}${detail}`;
 }
 
 function wrapSubPrompt(core) {
@@ -2091,12 +2375,23 @@ function buildPregnancyPrompt() {
 
 【后妃孕事与子女】（本模块已开启，只记录其他后妃/ NPC；{{user}} 的孕事在“子嗣.用户”，不要混进来）
 - 只写身份为后妃、嫔御、贵人、才人、皇后等的具名女子；不要写{{user}}、李承璟、陛下、圣上。
-- 字段：人物、孕月（1-10 的整数）、状态（稳定/不稳/临盆/小产/已生产 等）、备注（可选）。
-- 已生产、小产、流产的孕事要写清楚状态，程序会自动归入“已结束”。
+- 字段完整解释：
+  · 人物：后妃姓名，不用封号代替姓名。
+  · 孕月：1-10 的整数，按正文时间推进，只增不减。
+  · 状态：有孕/稳定/不稳/见红/临盆/已生产/小产/难产。
+  · 风险：低/中/高，或“胎位不正”“气血两亏”等具体风险。
+  · 胎象：太医诊出的脉象、胎动、见红、腹痛等。
+  · 太医：负责的太医姓名或“太医院”。
+  · 饮食：忌口、安胎药、饮食异常。
+  · 行动：静养/禁足/可走动/卧床等限制。
+  · 预计产期：正文或太医给出的日期；没有写“未定”。
+  · 知情者：谁已经知道、知道多少（全知/部分/怀疑）。
+  · 备注：其他线索。
+- 已生产、小产、流产的孕事要写清楚状态和胎象，程序会自动归入“已结束”。
 - 后妃生产后，子女写到“孕事子女”：姓名、性别、身份（太子/太女/王爷/公主/皇子/皇女）、生母、亲缘（按世界书写亲生/养子/过继/庶出/嫡出/不详）、排行、出生、状态；不要写进“子嗣”。
 - 没有孕事就输出空数组，不要编造。
 格式：
-"孕事": [{"人物":"", "孕月":0, "状态":"", "备注":""}],
+"孕事": [{"人物":"", "孕月":0, "状态":"", "风险":"", "胎象":"", "太医":"", "饮食":"", "行动":"", "预计产期":"", "知情者":[{"人物":"","程度":"部分"}], "备注":""}],
 "孕事子女": [{"姓名":"","性别":"男/女","身份":"","生母":"","排行":1,"出生":"","状态":"在世","备注":""}]`;
 }
 
@@ -2172,6 +2467,25 @@ function collectWorldbookContext(haystack) {
 function buildWorldbookPrompt(haystack) {
     const text = collectWorldbookContext(haystack);
     return text ? `\n\n【世界书资料】（只取与当前人物/剧情相关的条目；人物关系、已有子女、孕事、位份以此为准，没写的不要编）\n${text}` : '';
+}
+
+function buildPromptPreview() {
+    const s = getSettings();
+    const presets = getPresets();
+    const core = presets[s.presetName] || presets['正常'];
+    const baseline = getGroupData() || {};
+    const tid = getLatestAssistantId();
+    let ctx = '';
+    try {
+        const msg = tid >= 0 ? getChatMessages(tid)[0] : null;
+        if (msg && msg.role === 'assistant') ctx = stripGroupBlock(msg.message);
+    } catch (e) { /* ignore */ }
+    const baselineText = JSON.stringify(baseline, null, 2).slice(0, 18000);
+    return wrapSubPrompt(core)
+        + buildWorldbookPrompt(ctx + '\n' + baselineText)
+        + `\n\n【当前群像状态】\n` + baselineText
+        + `\n\n【本回正文】\n` + ctx.slice(0, 12000)
+        + `\n\n【输出格式（必须遵守）】\n只输出一个合法 JSON 对象，不要输出解释、前后缀或 Markdown 代码块。`;
 }
 
 async function generateSub(settings, options) {
@@ -3061,7 +3375,28 @@ const CSS = `
     letter-spacing: 1px;
     cursor: pointer;
 }
-.lx-initial-btn.show { display: inline-flex; align-items: center; }.lx-icon-btn {
+.lx-initial-btn.show { display: inline-flex; align-items: center; }
+.lx-batch-btn {
+    margin-left: auto;
+    padding: 4px 8px;
+    border: 1px solid var(--lx-border);
+    background: var(--lx-btn-bg, transparent);
+    color: var(--lx-dim);
+    font: inherit;
+    font-size: 10px;
+    cursor: pointer;
+}
+.lx-batch-btn.on { border-color: var(--lx-gold); color: var(--lx-gold); }
+.lx-batch-bar {
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    margin: 0 0 8px; padding: 6px 8px; border: 1px solid var(--lx-gold);
+    background: var(--lx-event-bg); color: var(--lx-gold); font-size: 10px;
+}
+.lx-batch-check { width: 14px; height: 14px; accent-color: var(--lx-gold); margin-right: 5px; vertical-align: middle; }
+.lx-follow-btn { float: right; padding: 1px 5px; border: 1px solid var(--lx-border); background: transparent; color: var(--lx-dim); font: inherit; font-size: 9px; cursor: pointer; }
+.lx-follow-btn.on { border-color: var(--lx-gold); color: var(--lx-gold); }
+.lx-npc-card.followed { border-left-color: var(--lx-gold); box-shadow: inset 3px 0 0 var(--lx-gold); }
+.lx-icon-btn {
     flex: 0 0 auto;
     width: 36px;
     height: 36px;
@@ -3675,6 +4010,84 @@ const CSS = `
     opacity: 0.55;
     pointer-events: none;
 }
+
+/* 华丽主题装饰：不加金线，只加暗纹、雾光、星点、竹影 */
+#lx-root[data-theme="B"] #lx-panel::after,
+#lx-root[data-theme="B"] #lx-settings::after {
+    content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+    background:
+        radial-gradient(ellipse at 50% 105%, rgba(197,92,40,.24), transparent 58%),
+        radial-gradient(ellipse at 8% 12%, rgba(235,190,100,.10), transparent 28%),
+        radial-gradient(circle at 80% 20%, rgba(255,220,150,.08) 0 1px, transparent 1.5px),
+        radial-gradient(circle at 72% 66%, rgba(255,220,150,.07) 0 1px, transparent 1.5px);
+    opacity: .9;
+}
+#lx-root[data-theme="C"] #lx-panel::after,
+#lx-root[data-theme="C"] #lx-settings::after {
+    content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+    background:
+        radial-gradient(ellipse at 50% 108%, rgba(30,100,85,.34), transparent 62%),
+        radial-gradient(ellipse at 82% 20%, rgba(170,210,185,.08), transparent 32%),
+        repeating-linear-gradient(115deg, transparent 0 24px, rgba(190,220,200,.03) 24px 25px);
+    opacity: .85;
+}
+#lx-root[data-theme="D"] #lx-panel::after,
+#lx-root[data-theme="D"] #lx-settings::after {
+    content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+    background:
+        radial-gradient(circle at 16% 22%, rgba(230,200,130,.55) 0 1px, transparent 1.6px),
+        radial-gradient(circle at 76% 16%, rgba(230,200,130,.40) 0 1px, transparent 1.6px),
+        radial-gradient(circle at 62% 72%, rgba(230,200,130,.35) 0 1px, transparent 1.6px),
+        radial-gradient(circle at 34% 86%, rgba(230,200,130,.30) 0 1px, transparent 1.6px),
+        radial-gradient(ellipse at 50% 100%, rgba(92,70,150,.18), transparent 55%);
+    opacity: .9;
+}
+#lx-root[data-theme="E"] #lx-panel::after,
+#lx-root[data-theme="E"] #lx-settings::after {
+    content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+    background:
+        linear-gradient(100deg, transparent 18%, rgba(70,100,70,.08) 18.5%, transparent 19.5%),
+        linear-gradient(80deg, transparent 62%, rgba(70,100,70,.06) 62.5%, transparent 63.5%),
+        radial-gradient(ellipse at 55% 100%, rgba(140,170,140,.16), transparent 60%),
+        radial-gradient(circle at 18% 24%, rgba(255,255,255,.5) 0 1px, transparent 1.5px);
+    opacity: .9;
+}
+#lx-root[data-theme="B"] .lx-header,
+#lx-root[data-theme="C"] .lx-header,
+#lx-root[data-theme="D"] .lx-header,
+#lx-root[data-theme="E"] .lx-header {
+    box-shadow: inset 0 -8px 18px rgba(0,0,0,.08);
+}
+#lx-root[data-theme="B"] .lx-title,
+#lx-root[data-theme="C"] .lx-title,
+#lx-root[data-theme="D"] .lx-title,
+#lx-root[data-theme="E"] .lx-title {
+    text-shadow: 0 0 12px var(--lx-card-bg);
+}
+.lx-theme-seal, .lx-theme-cloud { display: none; pointer-events: none; }
+#lx-root[data-theme="B"] .lx-theme-seal,
+#lx-root[data-theme="C"] .lx-theme-seal,
+#lx-root[data-theme="D"] .lx-theme-seal,
+#lx-root[data-theme="E"] .lx-theme-seal {
+    display: grid; place-items: center; position: absolute; right: 18px; bottom: 54px;
+    width: 26px; height: 26px; z-index: 2; transform: rotate(-7deg);
+    border: 1px solid currentColor; color: var(--lx-gold); font-size: 11px; opacity: .8;
+}
+#lx-root[data-theme="B"] .lx-theme-seal::before { content: "朱"; }
+#lx-root[data-theme="C"] .lx-theme-seal::before { content: "山"; }
+#lx-root[data-theme="D"] .lx-theme-seal::before { content: "夜"; }
+#lx-root[data-theme="E"] .lx-theme-seal::before { content: "竹"; }
+#lx-root[data-theme="B"] .lx-theme-cloud,
+#lx-root[data-theme="C"] .lx-theme-cloud,
+#lx-root[data-theme="D"] .lx-theme-cloud,
+#lx-root[data-theme="E"] .lx-theme-cloud {
+    display: block; position: absolute; left: 14px; top: 66px; width: 130px; height: 52px;
+    z-index: 1; opacity: .28;
+    background:
+        radial-gradient(ellipse at 20% 70%, var(--lx-gold) 0 7%, transparent 8%),
+        radial-gradient(ellipse at 45% 38%, var(--lx-gold) 0 9%, transparent 10%),
+        radial-gradient(ellipse at 68% 68%, var(--lx-gold) 0 7%, transparent 8%);
+}
 .lx-header {
     padding: 10px 12px;
     border-bottom: 1px solid var(--lx-border);
@@ -3704,7 +4117,28 @@ const CSS = `
     letter-spacing: 1px;
     cursor: pointer;
 }
-.lx-initial-btn.show { display: inline-flex; align-items: center; }.lx-icon-btn {
+.lx-initial-btn.show { display: inline-flex; align-items: center; }
+.lx-batch-btn {
+    margin-left: auto;
+    padding: 4px 8px;
+    border: 1px solid var(--lx-border);
+    background: var(--lx-btn-bg, transparent);
+    color: var(--lx-dim);
+    font: inherit;
+    font-size: 10px;
+    cursor: pointer;
+}
+.lx-batch-btn.on { border-color: var(--lx-gold); color: var(--lx-gold); }
+.lx-batch-bar {
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    margin: 0 0 8px; padding: 6px 8px; border: 1px solid var(--lx-gold);
+    background: var(--lx-event-bg); color: var(--lx-gold); font-size: 10px;
+}
+.lx-batch-check { width: 14px; height: 14px; accent-color: var(--lx-gold); margin-right: 5px; vertical-align: middle; }
+.lx-follow-btn { float: right; padding: 1px 5px; border: 1px solid var(--lx-border); background: transparent; color: var(--lx-dim); font: inherit; font-size: 9px; cursor: pointer; }
+.lx-follow-btn.on { border-color: var(--lx-gold); color: var(--lx-gold); }
+.lx-npc-card.followed { border-left-color: var(--lx-gold); box-shadow: inset 3px 0 0 var(--lx-gold); }
+.lx-icon-btn {
     width: 30px;
     height: 30px;
     border-radius: 2px;
@@ -3882,6 +4316,15 @@ const CSS = `
 .lx-secret-chip { padding: 1px 6px; border: 1px solid var(--lx-border); background: var(--lx-event-bg); font-size: 10.5px; }
 .lx-secret-chip.known { border-color: var(--lx-gold); color: var(--lx-gold); }
 .lx-secret-none { color: var(--lx-dim); }
+.lx-court-card, .lx-health-card { padding: 8px; margin-bottom: 7px; border: 1px solid var(--lx-border); border-left: 2px solid var(--lx-gold); background: var(--lx-event-bg); }
+.lx-court-card.clan { border-left-color: var(--lx-accent, var(--lx-gold)); }
+.lx-court-head, .lx-health-head { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-bottom: 4px; }
+.lx-court-name, .lx-health-name { color: var(--lx-gold); font-size: 13px; }
+.lx-court-meta, .lx-health-date { color: var(--lx-dim); font-size: 10px; }
+.lx-court-line { margin-top: 4px; color: var(--lx-text2); font-size: 11px; line-height: 1.6; }
+.lx-court-line b { color: var(--lx-gold); font-weight: 400; margin-right: 4px; }
+.lx-court-note { margin-top: 4px; color: var(--lx-dim); font-size: 10px; line-height: 1.6; }
+.lx-health-status { display: inline-block; margin-top: 5px; padding: 1px 6px; border: 1px solid var(--lx-border); color: var(--lx-gold); font-size: 9px; }
 .lx-struggle-filter { display: flex; gap: 5px; margin-bottom: 8px; }
 .lx-struggle-filter .lx-mini-btn.active { border-color: var(--lx-gold); color: var(--lx-gold); }
 .lx-struggle-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
@@ -4069,9 +4512,12 @@ const SHELL_HTML = `
     <div id="lx-panel" role="dialog" aria-modal="true" aria-label="群像志">
         <div class="lx-header">
             <span class="lx-title">群 像 志</span>
+            <button type="button" class="lx-batch-btn" data-action="batch-mode" aria-label="批量选择">批量</button>
             <button type="button" class="lx-initial-btn" data-action="initial-fill" aria-label="补全开局">补全</button>
             <button type="button" class="lx-icon-btn" data-action="close" aria-label="关闭">×</button>
         </div>
+        <span class="lx-theme-seal" aria-hidden="true">印</span>
+        <span class="lx-theme-cloud" aria-hidden="true"></span>
         <div class="lx-tabs" role="tablist">
             <div class="lx-tab active" role="tab" aria-selected="true" data-tab="NPC状态">NPC状态<span class="lx-tab-num"></span></div>
             <div class="lx-tab" role="tab" aria-selected="false" data-tab="NPC事件">NPC事件<span class="lx-tab-num"></span></div>
@@ -4081,6 +4527,8 @@ const SHELL_HTML = `
             <div class="lx-tab" role="tab" aria-selected="false" data-tab="秘辛">秘辛<span class="lx-tab-num"></span></div>
             <div class="lx-tab" role="tab" aria-selected="false" data-tab="流言">流言<span class="lx-tab-num"></span></div>
             <div class="lx-tab" role="tab" aria-selected="false" data-tab="斗争">斗争<span class="lx-tab-num"></span></div>
+            <div class="lx-tab" role="tab" aria-selected="false" data-tab="朝堂门阀">朝堂门阀<span class="lx-tab-num"></span></div>
+            <div class="lx-tab" role="tab" aria-selected="false" data-tab="医疗健康">医疗健康<span class="lx-tab-num"></span></div>
             <div class="lx-tab" role="tab" aria-selected="false" data-tab="书信">书信<span class="lx-tab-num"></span></div>
             <div class="lx-tab" role="tab" aria-selected="false" data-tab="时令">时令<span class="lx-tab-num"></span></div>
             <div class="lx-tab" role="tab" aria-selected="false" data-tab="时间线">时间线<span class="lx-tab-num"></span></div>
@@ -4103,6 +4551,8 @@ const SHELL_HTML = `
             <div class="lx-panel-tab" role="tabpanel" data-panel="秘辛"></div>
             <div class="lx-panel-tab" role="tabpanel" data-panel="流言"></div>
             <div class="lx-panel-tab" role="tabpanel" data-panel="斗争"></div>
+            <div class="lx-panel-tab" role="tabpanel" data-panel="朝堂门阀"></div>
+            <div class="lx-panel-tab" role="tabpanel" data-panel="医疗健康"></div>
             <div class="lx-panel-tab" role="tabpanel" data-panel="书信"></div>
             <div class="lx-panel-tab" role="tabpanel" data-panel="时令"></div>
             <div class="lx-panel-tab" role="tabpanel" data-panel="时间线"></div>
@@ -4261,6 +4711,7 @@ function applyTheme() {
         '--lx-font': theme.font || '"Noto Serif SC", "Songti SC", "STSong", "SimSun", serif'
     };
     Object.entries(map).forEach(([key, value]) => state.root.style.setProperty(key, value));
+    try { state.root.setAttribute('data-theme', themeKey || 'A'); } catch (e) { /* ignore */ }
     applyBallAppearance();
 }
 
@@ -4434,6 +4885,30 @@ function emptyText(defaultText) {
     return `<div class="lx-search-empty">没有匹配「${escapeHtml(query)}」</div>`;
 }
 
+async function deleteBatchSelection() {
+    const data = normalizeData(getGroupData() || {});
+    state.ui.batchKeys.forEach(key => {
+        const parts = String(key).split('|');
+        if (parts[0] === 'npc' && parts[1]) delete data.NPC状态[parts[1]];
+        if (parts[0] === 'event' && parts[1] && parts[2]) {
+            data[parts[1]] = (data[parts[1]] || []).filter(item => item.事件名 !== parts[2]);
+        }
+    });
+    const tid = getLatestAssistantId();
+    if (tid >= 0) await attachGroupData(tid, data);
+    state.ui.batchKeys.clear();
+    state.ui.batchOn = false;
+    if (state.refs.batch) state.refs.batch.classList.remove('on');
+    invalidateData();
+    renderAll();
+    toast('success', '已删除选中项');
+}
+
+function batchBar() {
+    if (!state.ui.batchOn) return '';
+    return `<div class="lx-batch-bar"><span>已选 ${state.ui.batchKeys.size} 项</span><button type="button" class="lx-mini-btn" data-action="batch-clear">清空</button><button type="button" class="lx-mini-btn" data-action="batch-delete">删除选中</button></div>`;
+}
+
 function renderNpc(data) {
     const timeText = formatTime(data);
     const year = timeText ? `<div class="lx-year">时令：${escapeHtml(timeText)}</div>` : '';
@@ -4455,8 +4930,12 @@ function renderNpc(data) {
             info.心情 && '心情：' + info.心情,
             info.当前所做 && '所事：' + info.当前所做
         ].filter(Boolean).map(text => `<span>${escapeHtml(text)}</span>`).join('');
-        return `<div class="lx-npc-card${current ? ' current' : ''}">
-            <div class="lx-npc-name">${escapeHtml(name)}${current ? '<span class="lx-npc-now">本轮</span>' : ''}</div>
+        const check = state.ui.batchOn
+            ? `<input type="checkbox" class="lx-batch-check" data-action="batch-toggle" data-key="npc|${escapeAttr(name)}" ${state.ui.batchKeys.has('npc|' + name) ? 'checked' : ''}>`
+            : '';
+        const followed = getSettings().followList.includes(name);
+        return `<div class="lx-npc-card${current ? ' current' : ''}${followed ? ' followed' : ''}">
+            <div class="lx-npc-name">${check}${escapeHtml(name)}${current ? '<span class="lx-npc-now">本轮</span>' : ''}<button type="button" class="lx-follow-btn${followed ? ' on' : ''}" data-action="follow-toggle" data-name="${escapeAttr(name)}">${followed ? '已关注' : '关注'}</button></div>
             <div class="lx-npc-meta">${meta}</div>
         </div>`;
     };
@@ -4487,14 +4966,18 @@ function renderNpc(data) {
     } else {
         html += group('全部人物', entries);
     }
-    setPanel('NPC状态', year + html);
+    setPanel('NPC状态', batchBar() + year + html);
 }
 
-function renderEventItem(event, roleField, isDone) {
+function renderEventItem(event, roleField, isDone, panelName) {
     const role = roleField && event[roleField]
         ? `<span class="lx-role">${escapeHtml(event[roleField])}</span>` : '';
     const domain = event.领域 ? `<span class="lx-event-domain">${escapeHtml(event.领域)}</span>` : '';
-    const title = event.事件名 ? `<div class="lx-event-title">${escapeHtml(event.事件名)}${domain}</div>` : '';
+    const key = 'event|' + (panelName || '') + '|' + (event.事件名 || '');
+    const check = state.ui.batchOn && event.事件名
+        ? `<input type="checkbox" class="lx-batch-check" data-action="batch-toggle" data-key="${escapeAttr(key)}" ${state.ui.batchKeys.has(key) ? 'checked' : ''}>`
+        : '';
+    const title = event.事件名 ? `<div class="lx-event-title">${check}${escapeHtml(event.事件名)}${domain}</div>` : '';
     const progress = getProgressNum(event);
     return `<div class="lx-event ${isDone ? 'done' : ''}">
         ${title}
@@ -4520,15 +5003,15 @@ function renderEventList(panelName, list, roleField) {
     if (!active.length) {
         html += '<div class="lx-empty" style="padding:18px 0;">暂无进行中的事件</div>';
     } else {
-        html += active.map(event => renderEventItem(event, roleField, false)).join('');
+        html += active.map(event => renderEventItem(event, roleField, false, panelName)).join('');
     }
     if (done.length) {
         html += `<details class="lx-completed">
             <summary><span>已完成 (${done.length})</span><span>点击展开</span></summary>
-            <div class="lx-completed-body">${done.map(event => renderEventItem(event, roleField, true)).join('')}</div>
+            <div class="lx-completed-body">${done.map(event => renderEventItem(event, roleField, true, panelName)).join('')}</div>
         </details>`;
     }
-    setPanel(panelName, html);
+    setPanel(panelName, batchBar() + html);
 }
 
 function renderRumors(list) {
@@ -4614,7 +5097,7 @@ function formatTime(data) {
 function renderCalendar(data) {
     const t = (data && data.时令) || {};
     const date = formatTime(data);
-    if (!date) {
+    if (!date && !t.礼仪 && !t.节日) {
         setPanel('时令', emptyText('时令未记') + '<div class="lx-time-hint">正文出现「景衡 X 年」「三月初八」等日期时，会自动记录。</div>');
         return;
     }
@@ -4625,6 +5108,12 @@ function renderCalendar(data) {
         ['月日', `${t.月 ? chineseNumber(t.月) + '月' : '不详'}${t.日 ? chineseDay(t.日) : ''}`],
         ['节气', t.节气 || '未记'],
         ['节日', t.节日 || '未记'],
+        ['礼仪', t.礼仪 || '未记'],
+        ['主礼', t.主礼 || '未记'],
+        ['地点', t.地点 || '未记'],
+        ['座次', t.座次 || '未记'],
+        ['禁忌', t.禁忌 || '未记'],
+        ['节目', t.节目 || '未记'],
         ['时辰', t.时辰 || '未记'],
         ['备注', t.备注 || '——']
     ];
@@ -4708,6 +5197,60 @@ function renderStruggles(list) {
         ${item.结果 ? `<div class="lx-struggle-result">${escapeHtml(item.结果)}</div>` : ''}
     </div>`;
     setPanel('斗争', `<div class="lx-struggle-filter">${tabs}</div>` + arr.slice().reverse().map(card).join(''));
+}
+
+function renderCourt(raw) {
+    const data = normalizeCourt(raw, 0);
+    const factions = data.派系.filter(item => textMatch(item.派系名, item.领袖, item.主张, item.目标, item.资源, item.备注));
+    const clans = data.家族.filter(item => textMatch(item.家族, item.家主, item.姻亲, item.世仇, item.产业, item.立场, item.备注));
+    if (!factions.length && !clans.length) {
+        setPanel('朝堂门阀', emptyText('暂无朝堂派系或门阀记录'));
+        return;
+    }
+    let html = '';
+    if (factions.length) {
+        html += `<div class="lx-npc-group-title">朝堂派系 · ${factions.length}</div>`;
+        html += factions.map(item => `<div class="lx-court-card">
+            <div class="lx-court-head"><span class="lx-court-name">${escapeHtml(item.派系名)}</span><span class="lx-court-meta">${escapeHtml(item.领袖 || '领袖未记')}</span></div>
+            <div class="lx-court-line"><b>成员</b>${escapeHtml((item.成员 || []).join('、') || '未记')}</div>
+            <div class="lx-court-line"><b>主张</b>${escapeHtml(item.主张 || '未记')}</div>
+            <div class="lx-court-line"><b>资源</b>${escapeHtml(item.资源 || '未记')}　<b>目标</b>${escapeHtml(item.目标 || '未记')}</div>
+            ${(item.敌对 || []).length ? `<div class="lx-court-line"><b>敌对</b>${escapeHtml(item.敌对.join('、'))}</div>` : ''}
+            <div class="lx-event-progress"><div class="lx-progress-bar"><div class="lx-progress-fill" style="width:${getProgressNum(item)}%"></div></div><span class="lx-progress-num">${getProgressNum(item)}%</span></div>
+            ${item.备注 ? `<div class="lx-court-note">${escapeHtml(item.备注)}</div>` : ''}
+        </div>`).join('');
+    }
+    if (clans.length) {
+        html += `<div class="lx-npc-group-title">门阀家族 · ${clans.length}</div>`;
+        html += clans.map(item => `<div class="lx-court-card clan">
+            <div class="lx-court-head"><span class="lx-court-name">${escapeHtml(item.家族)}</span><span class="lx-court-meta">${escapeHtml(item.家主 || '家主未记')}</span></div>
+            <div class="lx-court-line"><b>成员</b>${escapeHtml((item.成员 || []).join('、') || '未记')}</div>
+            <div class="lx-court-line"><b>姻亲</b>${escapeHtml(item.姻亲 || '未记')}　<b>世仇</b>${escapeHtml(item.世仇 || '未记')}</div>
+            <div class="lx-court-line"><b>产业</b>${escapeHtml(item.产业 || '未记')}</div>
+            <div class="lx-court-line"><b>门生</b>${escapeHtml((item.门生 || []).join('、') || '未记')}　<b>立场</b>${escapeHtml(item.立场 || '未记')}</div>
+            ${item.备注 ? `<div class="lx-court-note">${escapeHtml(item.备注)}</div>` : ''}
+        </div>`).join('');
+    }
+    setPanel('朝堂门阀', html);
+}
+
+function renderMedical(list) {
+    const arr = (Array.isArray(list) ? list : [])
+        .filter(item => textMatch(item.人物, item.日期, item.症状, item.诊断, item.方子, item.太医, item.状态, item.备注));
+    if (!arr.length) {
+        setPanel('医疗健康', emptyText('暂无医案记录'));
+        return;
+    }
+    const html = arr.slice().reverse().map(item => `<div class="lx-health-card">
+        <div class="lx-health-head"><span class="lx-health-name">${escapeHtml(item.人物)}</span><span class="lx-health-date">${escapeHtml(item.日期 || '日期未记')}</span></div>
+        <div class="lx-court-line"><b>症状</b>${escapeHtml(item.症状 || '未记')}</div>
+        <div class="lx-court-line"><b>诊断</b>${escapeHtml(item.诊断 || '未记')}</div>
+        <div class="lx-court-line"><b>方子</b>${escapeHtml(item.方子 || '未记')}</div>
+        <div class="lx-court-line"><b>太医</b>${escapeHtml(item.太医 || '未记')}　<b>忌口</b>${escapeHtml(item.忌口 || '未记')}</div>
+        <div class="lx-health-status">${escapeHtml(item.状态 || '在治')}</div>
+        ${item.备注 ? `<div class="lx-court-note">${escapeHtml(item.备注)}</div>` : ''}
+    </div>`).join('');
+    setPanel('医疗健康', html);
 }
 
 function renderTimeline(data, range) {
@@ -4934,6 +5477,13 @@ function renderPregnancy(list, children) {
         return `<div class="${cls}">
             <div><span class="lx-preg-name">${escapeHtml(item.人物)}</span><span class="lx-preg-month">${item.孕月 ? '孕 ' + item.孕月 + ' 月' : '孕月未录'}</span></div>
             <div class="lx-preg-status">${escapeHtml(item.状态 || '有孕')}${item.已结束 ? ' · 已结束' : ''}</div>
+            ${item.风险 ? `<div class="lx-preg-note">风险：${escapeHtml(item.风险)}</div>` : ''}
+            ${item.胎象 ? `<div class="lx-preg-note">胎象：${escapeHtml(item.胎象)}</div>` : ''}
+            ${item.太医 ? `<div class="lx-preg-note">太医：${escapeHtml(item.太医)}</div>` : ''}
+            ${item.饮食 ? `<div class="lx-preg-note">饮食：${escapeHtml(item.饮食)}</div>` : ''}
+            ${item.行动 ? `<div class="lx-preg-note">行动：${escapeHtml(item.行动)}</div>` : ''}
+            ${item.预计产期 ? `<div class="lx-preg-note">预计产期：${escapeHtml(item.预计产期)}</div>` : ''}
+            ${(item.知情者 || []).length ? `<div class="lx-preg-note">知情者：${(item.知情者 || []).map(k => escapeHtml(k.人物) + (k.程度 ? '·' + escapeHtml(k.程度) : '')).join('、')}</div>` : ''}
             ${item.备注 ? `<div class="lx-preg-note">${escapeHtml(item.备注)}</div>` : ''}
             <div class="lx-preg-note">${escapeHtml(pregnancyTip(item.孕月))}</div>
             <div style="text-align:right;margin-top:6px;"><button type="button" class="lx-mini-btn" data-action="preg-edit" data-idx="${index}">改</button></div>
@@ -5030,7 +5580,9 @@ function updateModuleVisibility() {
         '奏折': s.memorialModule,
         '秘辛': s.secretModule,
         '时令': s.calendarModule,
-        '斗争': s.struggleModule
+        '斗争': s.struggleModule,
+        '朝堂门阀': s.courtModule,
+        '医疗健康': s.medicalModule
     };
     Object.entries(visibility).forEach(([name, visible]) => {
         ['tab', 'panel'].forEach(kind => {
@@ -5052,8 +5604,10 @@ function updateTabCounts(data) {
         '秘辛': (data.秘辛 || []).length,
         '流言': (data.流言 || []).length,
         '斗争': (data.斗争 || []).filter(e => getProgressNum(e) < 100).length,
+        '朝堂门阀': ((data.朝堂门阀 && data.朝堂门阀.派系) || []).length + ((data.朝堂门阀 && data.朝堂门阀.家族) || []).length,
+        '医疗健康': (data.医疗健康 || []).length,
         '书信': (data.书信 || []).length,
-        '时令': data.时令 && (data.时令.月 || data.时令.节气) ? 1 : 0,
+        '时令': data.时令 && (data.时令.月 || data.时令.节气 || data.时令.节日 || data.时令.礼仪) ? 1 : 0,
         '关系图': (data.关系 || []).length,
         '伏笔': (data.伏笔 || []).filter(f => !f.已回收).length,
         '孕事': (data.孕事 || []).filter(p => !p.已结束).length + (data.孕事子女 || []).length,
@@ -5093,6 +5647,8 @@ function renderAll() {
     renderSecrets(data.秘辛);
     renderRumors(data.流言);
     renderStruggles(data.斗争);
+    renderCourt(data.朝堂门阀);
+    renderMedical(data.医疗健康);
     renderLetters(data.书信);
     renderCalendar(data);
     renderTimeline(data, getSettings().timelineRange);
@@ -5190,6 +5746,11 @@ function buildSettingsHTML() {
                 <div class="lx-field-hint">第一次对话时自动读取开局上下文补一次；手动则在标题右侧出现「补全」按钮，只在第一条消息附近显示。</div>
             </div>
             <div class="lx-field">
+                <label class="lx-field-label">提示词预览</label>
+                <button type="button" class="lx-mini-btn" data-action="prompt-preview">预览本次拼接的提示词</button>
+                <div class="lx-field-hint">显示当前预设、世界书、群像状态、本回正文和输出格式的完整拼接。</div>
+            </div>
+            <div class="lx-field">
                 <label class="lx-field-label">温度</label>
                 <div class="lx-range-row">
                     <input class="lx-range" id="lx-temp" type="range" min="0" max="1.5" step="0.1" value="${s.temperature}">
@@ -5224,6 +5785,8 @@ function buildSettingsHTML() {
                     ${checkRow('lx-secret-module', s.secretModule, '秘辛 / 把柄')}
                     ${checkRow('lx-calendar-module', s.calendarModule, '时令日历')}
                     ${checkRow('lx-struggle-module', s.struggleModule, '宫斗 / 政斗')}
+                    ${checkRow('lx-court-module', s.courtModule, '朝堂门阀')}
+                    ${checkRow('lx-medical-module', s.medicalModule, '医疗健康')}
                 </div>
                 <div class="lx-field-hint">关闭后对应页签隐藏，提示词也会要求本回不输出该模块。</div>
             </div>
@@ -5538,6 +6101,8 @@ function saveSettingsFromForm() {
         secretModule: checked('#lx-secret-module'),
         calendarModule: checked('#lx-calendar-module'),
         struggleModule: checked('#lx-struggle-module'),
+        courtModule: checked('#lx-court-module'),
+        medicalModule: checked('#lx-medical-module'),
         ballSize: clamp(toInt(val('#lx-ball-size'), 50), 36, 84),
         pregnancyModule: checked('#lx-preg-module'),
         heirModule: checked('#lx-heir-module'),
@@ -5976,6 +6541,37 @@ async function initialFill() {
     }
 }
 
+function openPromptPreview() {
+    if (!state.root) return;
+    const old = state.root.querySelector('.lx-reroll-mask');
+    if (old) old.remove();
+    const doc = state.doc || getDoc();
+    const text = buildPromptPreview();
+    const mask = doc.createElement('div');
+    mask.className = 'lx-reroll-mask';
+    mask.innerHTML = `<div class="lx-reroll-dialog" style="width:min(92vw,560px);">
+        <div class="lx-reroll-title">本次提示词预览</div>
+        <div class="lx-reroll-hint">共 ${text.length} 字符。只读，不会发送。</div>
+        <textarea class="lx-reroll-input" readonly style="min-height:320px;font-family:monospace;font-size:10px;">${escapeHtml(text)}</textarea>
+        <div class="lx-reroll-actions"><button type="button" class="lx-mini-btn" data-preview-close>关闭</button><button type="button" class="lx-mini-btn lx-btn-primary" data-preview-copy>复制</button></div>
+    </div>`;
+    state.root.appendChild(mask);
+    const close = () => mask.remove();
+    mask.querySelector('[data-preview-close]').addEventListener('click', close);
+    mask.addEventListener('click', event => { if (event.target === mask) close(); });
+    mask.querySelector('[data-preview-copy]').addEventListener('click', async () => {
+        try {
+            await navigator.clipboard.writeText(text);
+            toast('success', '提示词已复制');
+        } catch (e) {
+            const area = mask.querySelector('textarea');
+            area.select();
+            document.execCommand('copy');
+            toast('success', '提示词已复制');
+        }
+    });
+}
+
 function openRerollDialog() {
     if (state.busy) { toast('warning', '正在生成中，请稍候'); return; }
     if (!state.root) return;
@@ -6032,6 +6628,43 @@ async function handleAction(action, element) {
             return;
         case 'initial-fill':
             await initialFill();
+            return;
+        case 'prompt-preview':
+            openPromptPreview();
+            return;
+        case 'follow-toggle': {
+            const name = element.dataset.name || '';
+            if (!name) return;
+            const list = getSettings().followList.slice();
+            const idx = list.indexOf(name);
+            if (idx >= 0) list.splice(idx, 1); else list.push(name);
+            saveSettings({ followList: list });
+            renderAll();
+            toast('success', idx >= 0 ? '已取消关注' : '已关注 ' + name);
+            return;
+        }
+        case 'batch-mode':
+            state.ui.batchOn = !state.ui.batchOn;
+            if (!state.ui.batchOn) state.ui.batchKeys.clear();
+            if (state.refs.batch) state.refs.batch.classList.toggle('on', state.ui.batchOn);
+            renderAll();
+            return;
+        case 'batch-toggle': {
+            if (!state.ui.batchOn) return;
+            const key = element.dataset.key || '';
+            if (!key) return;
+            if (state.ui.batchKeys.has(key)) state.ui.batchKeys.delete(key);
+            else state.ui.batchKeys.add(key);
+            renderAll();
+            return;
+        }
+        case 'batch-clear':
+            state.ui.batchKeys.clear();
+            renderAll();
+            return;
+        case 'batch-delete':
+            if (!state.ui.batchKeys.size) { toast('warning', '还没有选中项'); return; }
+            await deleteBatchSelection();
             return;
         case 'cycle-save': {
             const input = state.shadow && state.shadow.querySelector('#lx-cycle-date');
@@ -6510,6 +7143,7 @@ function collectRefs(root) {
         ball: root.querySelector('#lx-ball'),
         badge: root.querySelector('#lx-ball-badge'),
         initial: root.querySelector('.lx-initial-btn'),
+        batch: root.querySelector('.lx-batch-btn'),
         mask: root.querySelector('#lx-mask'),
         panel: root.querySelector('#lx-panel'),
         settings: root.querySelector('#lx-settings'),
@@ -6746,6 +7380,7 @@ if (typeof document !== 'undefined') {
 /* 供 Node 做纯逻辑测试；在酒馆助手的 module 脚本里 export 会被忽略 */
 export const __test = {
     VERSION,
+    PRESET_DEFAULT,
     normalizeSettings,
     normalizeData,
     parseGroupBlock,
