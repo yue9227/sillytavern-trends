@@ -1,4 +1,4 @@
-const VERSION = '0.1.8';
+const VERSION = '0.1.9';
 let userNamesCache = { time: 0, names: [] };
 const HOST_ID = 'lx-group-host';
 const LEGACY_IDS = ['lx-ball', 'lx-panel', 'lx-mask', 'lx-settings', 'lx-group-style'];
@@ -304,6 +304,7 @@ const state = {
     refs: {},
     settings: null,
     dataCache: { key: '', data: null },
+    clearedLayers: new Set(),
     worldbookEntryCache: [],
     worldbookLoading: false,
     injection: null,
@@ -1049,6 +1050,17 @@ function normalizeData(raw) {
     out.流言 = dedupeSimilar(out.流言, item => item.内容 || '');
     out.斗争 = dedupeSimilar(out.斗争, item => `${item.事件名 || ''}${item.手段 || ''}`);
     out.伏笔 = dedupeSimilar(out.伏笔, item => item.内容 || '');
+    const uniqueBy = (list, fn) => {
+        const seen = new Set();
+        return (Array.isArray(list) ? list : []).filter(item => { const key = fn(item); if (seen.has(key)) return false; seen.add(key); return true; });
+    };
+    out.孕事 = uniqueBy(out.孕事, item => item.人物);
+    out.孕事子女 = uniqueBy(out.孕事子女, item => `${item.姓名}|${item.生母 || ''}`);
+    out.医疗健康 = uniqueBy(out.医疗健康, item => `${item.人物}|${item.日期}|${item.症状}`);
+    out.奏折 = uniqueBy(out.奏折, item => item.标题);
+    out.关系 = uniqueBy(out.关系, item => [item.甲, item.乙].sort().join('|'));
+    out.书信 = uniqueBy(out.书信, item => `${item.方向 || '收'}|${item.内容}`);
+    if (out.子嗣 && Array.isArray(out.子嗣.子女)) out.子嗣.子女 = uniqueBy(out.子嗣.子女, item => `${item.姓名}|${item.生母 || ''}`);
     const knownNames = Object.keys(out.NPC状态 || {}).filter(name => !isBlacklisted(name));
     (out.伏笔 || []).forEach(item => {
         const source = cleanName(item.来源);
@@ -1311,6 +1323,7 @@ function getGroupData() {
         // 逐楼读取比一次性取全聊天更省内存，也能兼容超长聊天。
         const stop = Math.max(0, lastId - 80);
         for (let i = lastId; i >= stop; i--) {
+            if (state.clearedLayers.has(i)) continue;
             const msgs = getChatMessages(i);
             if (!msgs || !msgs.length) continue;
             const data = readGroupDataFromMessage(msgs[0]);
@@ -1347,6 +1360,7 @@ function getPrevGroupData(id) {
     try {
         const stop = Math.max(0, id - 81);
         for (let i = id - 1; i >= stop; i--) {
+            if (state.clearedLayers.has(i)) continue;
             const msgs = getChatMessages(i);
             if (!msgs || !msgs.length) continue;
             const data = readGroupDataFromMessage(msgs[0]);
@@ -1375,6 +1389,7 @@ async function clearGroupDataFromMessage(messageId) {
         // 这里同时写 null，读取端会把 null 当作没有群像数据。
         const nextData = Object.assign({}, msg.data, { 群像: null });
         await setChatMessages([{ message_id: messageId, data: nextData }], { refresh: 'none' });
+        state.clearedLayers.add(Number(messageId));
         invalidateData();
         return true;
     } catch (e) {
@@ -1390,6 +1405,7 @@ async function attachGroupData(messageId, data) {
         const msg = msgs[0];
         const newData = Object.assign({}, msg.data || {}, { 群像: data });
         await setChatMessages([{ message_id: messageId, data: newData }], { refresh: 'none' });
+        state.clearedLayers.delete(Number(messageId));
         state.dataCache = { key: '', data: normalizeData(data) };
         return true;
     } catch (e) {
@@ -2200,6 +2216,17 @@ function mergeGroupData(oldData, fresh) {
     out.流言 = dedupeSimilar(out.流言, item => item.内容 || '');
     out.斗争 = dedupeSimilar(out.斗争, item => `${item.事件名 || ''}${item.手段 || ''}`);
     out.伏笔 = dedupeSimilar(out.伏笔, item => item.内容 || '');
+    const uniqueBy = (list, fn) => {
+        const seen = new Set();
+        return (Array.isArray(list) ? list : []).filter(item => { const key = fn(item); if (seen.has(key)) return false; seen.add(key); return true; });
+    };
+    out.孕事 = uniqueBy(out.孕事, item => item.人物);
+    out.孕事子女 = uniqueBy(out.孕事子女, item => `${item.姓名}|${item.生母 || ''}`);
+    out.医疗健康 = uniqueBy(out.医疗健康, item => `${item.人物}|${item.日期}|${item.症状}`);
+    out.奏折 = uniqueBy(out.奏折, item => item.标题);
+    out.关系 = uniqueBy(out.关系, item => [item.甲, item.乙].sort().join('|'));
+    out.书信 = uniqueBy(out.书信, item => `${item.方向 || '收'}|${item.内容}`);
+    if (out.子嗣 && Array.isArray(out.子嗣.子女)) out.子嗣.子女 = uniqueBy(out.子嗣.子女, item => `${item.姓名}|${item.生母 || ''}`);
 
     out.最后更新回合 = round;
     out.版本 = 2;
@@ -2854,6 +2881,7 @@ async function generateSub(settings, options) {
         + buildPersonaPrompt()
         + worldbookText
         + (opts.initial ? '\n\n【开局补全】这是第一次补全：结合世界书、人设、开场白和最初几层对话，建立所有已出现和世界书提到的 NPC、国家事件、时令与线索；不要只写眼前几个人。' : '')
+        + (opts.reroll ? '\n\n【本层重roll】这是同一层正文的重roll：已有条目必须在原条目覆盖更新，不要新增正文里没有依据的新事件/派系/家族/宴席/伏笔。' : '')
         + (opts.instruction ? `\n\n【本次重roll要求】\n${opts.instruction}` : '')
         + `\n\n【当前群像状态】\n` + baselineText
         + `\n\n【本回正文】\n` + ctx.slice(0, 12000)
@@ -2950,7 +2978,7 @@ async function handleAiMessage(messageId, type) {
     state.busy = true;
     setBusyUI(true);
     try {
-        const parsed = await generateSub(s, { messageId, initial: initialWindow });
+        const parsed = await generateSub(s, { messageId, initial: initialWindow, reroll: type === 'swipe' });
         if (parsed && parsed.__error) {
             logEntry.标签 = s.mode === 'main' ? '主API失败' : '副API失败';
             logEntry.原始 = parsed.__raw || '';
@@ -3061,7 +3089,7 @@ async function rerollGroup(instruction) {
     const logEntry = { 消息ID: tid + '(重roll)', 模式: '重roll', 标签: '', 原始: '', 结果: '' };
     try {
         const baseline = getPrevGroupData(tid) || {};
-        const parsed = await generateSub(s, { messageId: tid, baseline, instruction: String(instruction || '').trim().slice(0, 500) });
+        const parsed = await generateSub(s, { messageId: tid, baseline, reroll: true, instruction: String(instruction || '').trim().slice(0, 500) });
         if (gen !== state.gen) return;
         if (parsed && parsed.__error) {
             logEntry.标签 = '解析失败';
@@ -4132,6 +4160,19 @@ const CSS = `
     font-weight: 700;
 }
 .lx-field-hint { color: var(--lx-dim); font-size: 10.5px; font-style: italic; margin-top: 5px; line-height: 1.5; }
+.lx-current {
+    position: relative;
+    outline: 1px solid var(--lx-gold);
+    outline-offset: -1px;
+    box-shadow: inset 3px 0 0 var(--lx-gold), 0 0 12px rgba(212,175,55,.10);
+}
+.lx-npc-card.lx-current::after { content: none; }
+.lx-current::after {
+    content: "本轮";
+    position: absolute; right: 5px; top: 4px;
+    color: var(--lx-gold); font-size: 8px; letter-spacing: 1px;
+    opacity: .8; pointer-events: none;
+}
 .lx-module-tools { display: flex; justify-content: flex-end; gap: 5px; margin: -2px 0 7px; }
 .lx-module-tools .lx-mini-btn { padding: 2px 7px; font-size: 9px; }
 .lx-module-items { max-height: 360px; overflow: auto; margin: 8px 0; border: 1px solid var(--lx-border); background: var(--lx-event-bg); }
@@ -5328,7 +5369,7 @@ function renderNpc(data) {
             ? `<input type="checkbox" class="lx-batch-check" data-action="batch-toggle" data-key="npc|${escapeAttr(name)}" ${state.ui.batchKeys.has('npc|' + name) ? 'checked' : ''}>`
             : '';
         const followed = getSettings().followList.includes(name);
-        return `<div class="lx-npc-card${current ? ' current' : ''}${followed ? ' followed' : ''}">
+        return `<div class="lx-npc-card${current ? ' current' : ''}${followed ? ' followed' : ''}" data-round="${toInt(info.更新回合, 0)}">
             <div class="lx-npc-name">${check}${escapeHtml(name)}${current ? '<span class="lx-npc-now">本轮</span>' : ''}<button type="button" class="lx-follow-btn${followed ? ' on' : ''}" data-action="follow-toggle" data-name="${escapeAttr(name)}">${followed ? '已关注' : '关注'}</button></div>
             <div class="lx-npc-meta">${meta}</div>
         </div>`;
@@ -5373,7 +5414,7 @@ function renderEventItem(event, roleField, isDone, panelName) {
         : '';
     const title = event.事件名 ? `<div class="lx-event-title">${check}${escapeHtml(event.事件名)}${domain}</div>` : '';
     const progress = getProgressNum(event);
-    return `<div class="lx-event ${isDone ? 'done' : ''}">
+    return `<div class="lx-event ${isDone ? 'done' : ''}" data-round="${toInt(event.更新回合, 0) || toInt(event.回合, 0)}">
         ${title}
         <div>${role}${escapeHtml(event.内容 || '')}</div>
         <div class="lx-event-progress">
@@ -5418,11 +5459,11 @@ function renderRumors(list) {
         return;
     }
     const html = arr.slice(-10).reverse().map(item => {
-        if (typeof item === 'string') return `<div class="lx-rumor">${escapeHtml(item)}</div>`;
+        if (typeof item === 'string') return `<div class="lx-rumor" data-round="${toInt(item.回合, 0)}">${escapeHtml(item)}</div>`;
         const chain = (item.传播链 || []).map((node, index) =>
             `<span class="lx-rumor-node">${escapeHtml(node.人物)}${node.版本 ? `<small>${escapeHtml(node.版本)}</small>` : ''}</span>${index < item.传播链.length - 1 ? '<span class="lx-rumor-arrow">→</span>' : ''}`
         ).join('');
-        return `<div class="lx-rumor">
+        return `<div class="lx-rumor" data-round="${toInt(item.回合, 0)}">
             <div class="lx-rumor-content">${escapeHtml(item.内容 || '')}</div>
             <div class="lx-rumor-meta">
                 ${item.来源人物 ? `<span>源头：${escapeHtml(item.来源人物)}</span>` : ''}
@@ -5449,7 +5490,7 @@ function renderLetters(list) {
         const date = item.日期 || item.时间 || (item.回合 ? `第 ${item.回合} 回` : '');
         const cls = 'lx-letter received';
         const action = `<button type="button" class="lx-mini-btn" data-action="letter-del" data-idx="${index}">删除</button>`;
-        return `<div class="${cls}">
+        return `<div class="${cls}" data-round="${toInt(item.回合, 0)}">
             <div class="lx-letter-sheet">
                 <div class="lx-letter-head">
                     <span class="lx-letter-direction">${isSent ? '寄往' : '来自'}</span>
@@ -5653,7 +5694,7 @@ function renderMemorials(list) {
     const done = item => ['准奏', '驳回', '已结'].includes(item.状态);
     const active = arr.filter(item => !done(item));
     const finished = arr.filter(done);
-    const card = item => `<div class="lx-memorial ${done(item) ? 'done' : ''}">
+    const card = item => `<div class="lx-memorial ${done(item) ? 'done' : ''}" data-round="${toInt(item.更新回合, 0) || toInt(item.回合, 0)}">
         <div class="lx-memorial-head"><span class="lx-memorial-title">${escapeHtml(item.标题)}</span><span class="lx-memorial-status">${escapeHtml(item.状态 || '待议')}</span></div>
         <div class="lx-memorial-meta">${[item.上奏人 && '上奏：' + item.上奏人, item.衙门 && '衙门：' + item.衙门].filter(Boolean).map(x => `<span>${escapeHtml(x)}</span>`).join('')}</div>
         ${item.事由 ? `<div class="lx-memorial-body">${escapeHtml(item.事由)}</div>` : ''}
@@ -5685,7 +5726,7 @@ function renderSecrets(list) {
     const html = arr.slice().reverse().map(item => {
         const know = item.知情者 || [];
         const unknown = item.不知情者 || [];
-        return `<div class="lx-secret">
+        return `<div class="lx-secret" data-round="${toInt(item.回合, 0)}">
             <div class="lx-secret-content">${escapeHtml(item.内容 || '')}</div>
             ${item.涉及 ? `<div class="lx-secret-line"><b>涉及</b>${escapeHtml(item.涉及)}</div>` : ''}
             <div class="lx-secret-line"><b>知情</b>${know.length ? know.map(k => `<span class="lx-secret-chip known">${escapeHtml(k.人物)}·${escapeHtml(k.程度)}</span>`).join('') : '<span class="lx-secret-none">无人</span>'}</div>
@@ -5708,7 +5749,7 @@ function renderStruggles(list) {
         setPanel('斗争', `<div class="lx-struggle-filter">${tabs}</div>` + emptyText('暂无斗争'));
         return;
     }
-    const card = item => `<div class="lx-struggle level-${escapeAttr(item.烈度 || '低')}">
+    const card = item => `<div class="lx-struggle level-${escapeAttr(item.烈度 || '低')}" data-round="${toInt(item.更新回合, 0) || toInt(item.回合, 0)}">
         <div class="lx-struggle-head"><span class="lx-struggle-type">${escapeHtml(item.类型 || '宫斗')}</span><span class="lx-struggle-name">${escapeHtml(item.事件名)}</span><span class="lx-struggle-level">${escapeHtml(item.烈度 || '低')}烈度</span></div>
         <div class="lx-struggle-line"><b>发起</b>${escapeHtml(item.发起者 || '不详')} <span class="lx-arrow">→</span> ${escapeHtml(item.目标 || '不详')}</div>
         ${item.手段 ? `<div class="lx-struggle-line"><b>手段</b>${escapeHtml(item.手段)}</div>` : ''}
@@ -5732,7 +5773,7 @@ function renderCourt(raw) {
     let html = '';
     if (factions.length) {
         html += `<div class="lx-npc-group-title">朝堂派系 · ${factions.length}</div>`;
-        html += factions.map(item => `<div class="lx-court-card">
+        html += factions.map(item => `<div class="lx-court-card" data-round="${toInt(item.回合, 0)}">
             <div class="lx-court-head"><span class="lx-court-name">${escapeHtml(item.派系名)}</span><span class="lx-court-meta">${escapeHtml(item.领袖 || '领袖未记')}</span></div>
             <div class="lx-court-line"><b>成员</b>${escapeHtml((item.成员 || []).join('、') || '未记')}</div>
             <div class="lx-court-line"><b>主张</b>${escapeHtml(item.主张 || '未记')}</div>
@@ -5744,7 +5785,7 @@ function renderCourt(raw) {
     }
     if (clans.length) {
         html += `<div class="lx-npc-group-title">门阀家族 · ${clans.length}</div>`;
-        html += clans.map(item => `<div class="lx-court-card clan">
+        html += clans.map(item => `<div class="lx-court-card clan" data-round="${toInt(item.回合, 0)}">
             <div class="lx-court-head"><span class="lx-court-name">${escapeHtml(item.家族)}</span><span class="lx-court-meta">${escapeHtml(item.家主 || '家主未记')}</span></div>
             <div class="lx-court-line"><b>成员</b>${escapeHtml((item.成员 || []).join('、') || '未记')}</div>
             <div class="lx-court-line"><b>姻亲</b>${escapeHtml(item.姻亲 || '未记')}　<b>世仇</b>${escapeHtml(item.世仇 || '未记')}</div>
@@ -5763,7 +5804,7 @@ function renderMedical(list) {
         setPanel('医疗健康', emptyText('暂无医案记录'));
         return;
     }
-    const html = arr.slice().reverse().map(item => `<div class="lx-health-card">
+    const html = arr.slice().reverse().map(item => `<div class="lx-health-card" data-round="${toInt(item.回合, 0)}">
         <div class="lx-health-head"><span class="lx-health-name">${escapeHtml(item.人物)}</span><span class="lx-health-date">${escapeHtml(item.日期 || '日期未记')}</span></div>
         <div class="lx-court-line"><b>症状</b>${escapeHtml(item.症状 || '未记')}</div>
         <div class="lx-court-line"><b>诊断</b>${escapeHtml(item.诊断 || '未记')}</div>
@@ -5953,7 +5994,7 @@ function renderForeshadow(list) {
             : `<span>${item.已回收 ? '已回收' : '未回收'}</span>`;
         const roundLabel = item.回合 ? `第 ${item.回合} 回` : '早期';
         const recoveredLabel = item.回收回合 ? ` · 第 ${item.回收回合} 回收` : '';
-        return `<div class="lx-foreshadow-item ${item.已回收 ? 'recovered' : ''}">
+        return `<div class="lx-foreshadow-item ${item.已回收 ? 'recovered' : ''}" data-round="${toInt(item.回合, 0)}">
             <div class="lx-foreshadow-content">${escapeHtml(item.内容 || '')}</div>
             <div class="lx-foreshadow-meta">
                 <span>${roundLabel} · ${escapeHtml(item.来源 || '手动')}${recoveredLabel}</span>
@@ -6011,7 +6052,7 @@ function renderPregnancy(list, children) {
     let html = '';
     if (kids.length) {
         html += `<div class="lx-npc-group-title">后妃所出子女 · ${kids.length}</div>`;
-        html += kids.map(item => `<div class="lx-heir-child">
+        html += kids.map(item => `<div class="lx-heir-child" data-round="${toInt(item.回合, 0)}">
             <div class="lx-heir-child-head"><span class="lx-heir-child-name">${escapeHtml(item.姓名)}</span><span class="lx-heir-child-title">${escapeHtml(item.身份 || (item.性别 === '女' ? '皇女' : '皇子'))}</span></div>
             <div class="lx-heir-line"><b>性别</b>${escapeHtml(item.性别)}　<b>生母</b>${escapeHtml(displayPersonName(item.生母) || '不详')}　<b>排行</b>${item.排行 ? '第' + item.排行 : '未序'}　<b>年龄</b>${item.年龄 !== undefined && item.年龄 !== null ? item.年龄 + '岁' : '待推'}</div>
             <div class="lx-heir-line"><b>亲缘</b>${escapeHtml(item.亲缘 || '不详')}　<b>出生</b>${escapeHtml(item.出生 || '未记')}　<b>状态</b>${escapeHtml(item.状态 || '在世')}</div>
@@ -6020,7 +6061,7 @@ function renderPregnancy(list, children) {
     }
     html += rows.map(({ item, index }) => {
         const cls = item.已结束 ? 'lx-preg-card ended' : 'lx-preg-card';
-        return `<div class="${cls}">
+        return `<div class="${cls}" data-round="${toInt(item.回合, 0)}">
             <div><span class="lx-preg-name">${escapeHtml(item.人物)}</span><span class="lx-preg-month">${item.孕月 ? '孕 ' + item.孕月 + ' 月' : '孕月未录'}</span></div>
             <div class="lx-preg-status">${escapeHtml(item.状态 || '有孕')}${item.已结束 ? ' · 已结束' : ''}</div>
             ${item.风险 ? `<div class="lx-preg-note">风险：${escapeHtml(item.风险)}</div>` : ''}
@@ -6116,7 +6157,7 @@ function renderHeir(heir) {
 
     if (kids.length) {
         html += `<div class="lx-npc-group-title">子女 · ${kids.length}</div>`;
-        html += kids.map(item => `<div class="lx-heir-child">
+        html += kids.map(item => `<div class="lx-heir-child" data-round="${toInt(item.回合, 0)}">
             <div class="lx-heir-child-head"><span class="lx-heir-child-name">${escapeHtml(item.姓名)}</span><span class="lx-heir-child-title">${escapeHtml(item.身份 || (item.性别 === '女' ? '皇女' : '皇子'))}</span></div>
             <div class="lx-heir-line"><b>性别</b>${escapeHtml(item.性别)}　<b>生母</b>${escapeHtml(displayPersonName(item.生母) || '不详')}　<b>排行</b>${item.排行 ? '第' + item.排行 : '未序'}　<b>年龄</b>${item.年龄 !== undefined && item.年龄 !== null ? item.年龄 + '岁' : '待推'}</div>
             <div class="lx-heir-line"><b>亲缘</b>${escapeHtml(item.亲缘 || '不详')}　<b>出生</b>${escapeHtml(item.出生 || '未记')}　<b>状态</b>${escapeHtml(item.状态 || '在世')}</div>
@@ -6192,6 +6233,14 @@ function updateInitialButton() {
     btn.classList.toggle('show', isInitialFillAvailable());
 }
 
+function markCurrentRounds(data) {
+    if (!state.root) return;
+    const last = toInt(data && data.最后更新回合, 0);
+    state.root.querySelectorAll('[data-round]').forEach(el => {
+        el.classList.toggle('lx-current', last > 0 && toInt(el.getAttribute('data-round'), 0) === last);
+    });
+}
+
 function renderAll() {
     if (!state.root) return;
     const data = getGroupData() || normalizeData({});
@@ -6215,6 +6264,7 @@ function renderAll() {
     updateModuleVisibility();
     updateTabCounts(data);
     updateInitialButton();
+    markCurrentRounds(data);
 }
 
 
@@ -8073,6 +8123,7 @@ function bindTavernEvents() {
     on(tavern_events.CHAT_CHANGED, () => {
         state.gen++;
         state.processed.clear();
+        state.clearedLayers.clear();
         state.pending = null;
         state.initialTried = false;
         state.initialBootTried = false;
