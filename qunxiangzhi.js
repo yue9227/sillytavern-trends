@@ -1,4 +1,4 @@
-const VERSION = '0.1.7';
+const VERSION = '0.1.8';
 let userNamesCache = { time: 0, names: [] };
 const HOST_ID = 'lx-group-host';
 const LEGACY_IDS = ['lx-ball', 'lx-panel', 'lx-mask', 'lx-settings', 'lx-group-style'];
@@ -424,6 +424,32 @@ function normalizeNpcDisplayName(name) {
     return n;
 }
 
+function normalizedText(text) {
+    return String(text || '').replace(/[\s，。！？、；：""''（）()【】\[\]·—\-]/g, '').toLowerCase();
+}
+
+function similarText(a, b) {
+    const x = normalizedText(a);
+    const y = normalizedText(b);
+    if (!x || !y) return false;
+    if (x === y) return true;
+    return x.length >= 12 && y.length >= 12 && (x.includes(y) || y.includes(x));
+}
+
+function dedupeSimilar(list, getText) {
+    const out = [];
+    (Array.isArray(list) ? list : []).forEach(item => {
+        const text = getText(item);
+        const hit = out.find(old => similarText(getText(old), text));
+        if (hit) {
+            if (item && typeof item === 'object') Object.assign(hit, item);
+            return;
+        }
+        out.push(item);
+    });
+    return out;
+}
+
 function isGenericNpcName(name) {
     const n = String(name || '').trim();
     return !n || ['NPC', 'npc', '群像', '群像人物', '某NPC', '某npc', '无名', '未记名', '佚名'].includes(n);
@@ -708,14 +734,15 @@ function mergeBanquets(oldList, newList, round) {
     const map = new Map();
     (Array.isArray(oldList) ? oldList : []).forEach(item => {
         const b = normalizeBanquet(item, 0);
-        if (b) map.set(b.名称, b);
+        if (b) map.set(cleanName(b.名称), b);
     });
     (Array.isArray(newList) ? newList : []).forEach(item => {
         const b = normalizeBanquet(item, round);
         if (!b) return;
-        const old = map.get(b.名称);
-        // 宴席只新增，不覆盖已生成的宴席。
-        if (!old) map.set(b.名称, b);
+        const old = map.get(cleanName(b.名称));
+        if (!old) { map.set(cleanName(b.名称), b); return; }
+        // 同一宴席：在本条内更新覆盖，不新增第二条。
+        ['主家', '地点', '日期', '宾客', '目的', '备注'].forEach(k => { if (b[k]) old[k] = b[k]; });
     });
     return Array.from(map.values());
 }
@@ -735,7 +762,14 @@ function normalizeTime(raw) {
         座次: String(t.座次 || '').trim().slice(0, 80),
         禁忌: String(t.禁忌 || '').trim().slice(0, 80),
         节目: String(t.节目 || '').trim().slice(0, 120),
-        宴席: (Array.isArray(t.宴席) ? t.宴席 : []).map(item => normalizeBanquet(item, 0)).filter(Boolean),
+        宴席: (() => {
+            const map = new Map();
+            (Array.isArray(t.宴席) ? t.宴席 : []).map(item => normalizeBanquet(item, 0)).filter(Boolean).forEach(item => {
+                const key = cleanName(item.名称);
+                if (!map.has(key)) map.set(key, item);
+            });
+            return Array.from(map.values());
+        })(),
         时辰: String(t.时辰 || '').trim().slice(0, 10),
         备注: String(t.备注 || '').trim().slice(0, 120)
     };
@@ -1008,6 +1042,13 @@ function normalizeData(raw) {
     out.最后更新回合 = Math.max(0, toInt(out.最后更新回合, 0));
     out.子嗣 = deriveChildAges(out.子嗣, out.时令);
     out.孕事子女 = deriveChildAges({ 用户: {}, 子女: out.孕事子女 }, out.时令).子女;
+    ['NPC事件', '国家事件', '邻国事件'].forEach(key => {
+        out[key] = dedupeSimilar(out[key], item => `${item.事件名 || ''}${item.内容 || ''}`);
+    });
+    out.秘辛 = dedupeSimilar(out.秘辛, item => item.内容 || '');
+    out.流言 = dedupeSimilar(out.流言, item => item.内容 || '');
+    out.斗争 = dedupeSimilar(out.斗争, item => `${item.事件名 || ''}${item.手段 || ''}`);
+    out.伏笔 = dedupeSimilar(out.伏笔, item => item.内容 || '');
     const knownNames = Object.keys(out.NPC状态 || {}).filter(name => !isBlacklisted(name));
     (out.伏笔 || []).forEach(item => {
         const source = cleanName(item.来源);
@@ -1725,9 +1766,14 @@ function normalizeClan(item, round) {
 
 function normalizeCourt(raw, round) {
     const obj = isPlainObject(raw) ? raw : {};
+    const dedupe = (list, keyFn) => {
+        const map = new Map();
+        list.forEach(item => { const key = keyFn(item); if (!map.has(key)) map.set(key, item); });
+        return Array.from(map.values());
+    };
     return {
-        派系: (Array.isArray(obj.派系) ? obj.派系 : []).map(item => normalizeFaction(item, round)).filter(Boolean),
-        家族: (Array.isArray(obj.家族) ? obj.家族 : []).map(item => normalizeClan(item, round)).filter(Boolean)
+        派系: dedupe((Array.isArray(obj.派系) ? obj.派系 : []).map(item => normalizeFaction(item, round)).filter(Boolean), item => courtKey(item.派系名)),
+        家族: dedupe((Array.isArray(obj.家族) ? obj.家族 : []).map(item => normalizeClan(item, round)).filter(Boolean), item => courtKey(item.家族))
     };
 }
 
@@ -1887,19 +1933,36 @@ function deriveMenstrualCycle(heir, calendar) {
     return data;
 }
 
+function courtKey(name) {
+    return cleanName(name).replace(/(家族|门阀|氏|家|派|党|集团)$/g, '') || cleanName(name);
+}
 function mergeCourt(oldCourt, freshCourt, round) {
     const old = normalizeCourt(oldCourt, 0);
     const fresh = normalizeCourt(freshCourt, round);
     const mergeList = (oldList, newList, keyName) => {
         const map = new Map();
-        oldList.forEach(item => map.set(item[keyName], item));
+        oldList.forEach(item => {
+            const key = courtKey(item[keyName]);
+            if (!map.has(key)) map.set(key, item);
+        });
         newList.forEach(item => {
-            const key = item[keyName];
+            const key = courtKey(item[keyName]);
             const prev = map.get(key);
-            // 朝堂门阀只新增，不覆盖已有派系/家族。
-            if (prev) return;
-            item.回合 = item.回合 || round;
-            map.set(key, item);
+            if (!prev) {
+                item.回合 = item.回合 || round;
+                map.set(key, item);
+                return;
+            }
+            // 同一派系/家族：在本条内更新覆盖，不新增第二条。
+            ['领袖', '主张', '资源', '目标', '立场', '备注'].forEach(k => {
+                if (item[k]) prev[k] = item[k];
+            });
+            prev.成员 = Array.from(new Set([...(prev.成员 || []), ...(item.成员 || [])]));
+            prev.敌对 = Array.from(new Set([...(prev.敌对 || []), ...(item.敌对 || [])]));
+            prev.门生 = Array.from(new Set([...(prev.门生 || []), ...(item.门生 || [])]));
+            ['姻亲', '世仇', '产业'].forEach(k => { if (item[k]) prev[k] = item[k]; });
+            prev.进度 = Math.max(prev.进度 || 0, item.进度 || 0);
+            prev.回合 = item.回合 || prev.回合 || round;
         });
         return Array.from(map.values());
     };
@@ -2130,6 +2193,14 @@ function mergeGroupData(oldData, fresh) {
     out.伏笔 = recoverForeshadows(out.伏笔, []
         .concat(out.NPC事件 || [], out.国家事件 || [], out.邻国事件 || []), round);
 
+    ['NPC事件', '国家事件', '邻国事件'].forEach(key => {
+        out[key] = dedupeSimilar(out[key], item => `${item.事件名 || ''}${item.内容 || ''}`);
+    });
+    out.秘辛 = dedupeSimilar(out.秘辛, item => item.内容 || '');
+    out.流言 = dedupeSimilar(out.流言, item => item.内容 || '');
+    out.斗争 = dedupeSimilar(out.斗争, item => `${item.事件名 || ''}${item.手段 || ''}`);
+    out.伏笔 = dedupeSimilar(out.伏笔, item => item.内容 || '');
+
     out.最后更新回合 = round;
     out.版本 = 2;
     return out;
@@ -2302,7 +2373,7 @@ function buildExtraModulesPrompt() {
 - 时令（含节庆礼仪）：只有正文出现明确日期、节气、节日、时辰、礼仪时才更新。写年号、年、月、日、节气、节日、礼仪、主礼、地点、座次、禁忌、节目、宴席、时辰、备注；节日必须是古代节日（元日/上元/上巳/寒食/端阳/七夕/中元/中秋/重阳/腊八/祭灶/除夕等），按日期推算最近的节日；礼仪、主礼、地点、座次、禁忌、节目必须推演，不能写“未记”；没有日期就留空对象。节庆礼仪合并在这里，不另开模块。
 - 宴席：写名称（如“崔氏上元宴”）、主家、地点、日期、宾客、目的、备注。正文没有明确宴席时，可依据时令和已知门阀/宫廷制造一场古代宴席，不要写现代宴会。
 - 斗争（0-2 条）：宫斗或政斗。只在有明确动机、利益冲突、行动条件时记录；不要每回硬造。写类型（宫斗/政斗）、事件名、发起者、目标、手段、烈度（低/中/高）、阶段（策划/执行/调查/反制/收场）、证据、知情者、进度、结果。结果开放，不保证成功；不替{{user}}决定中计、受伤、失宠或站队；信息有限，不知道的人不要写成知道。
-- 朝堂门阀：分「派系」和「家族」两段。派系写派系名、领袖、成员、主张、资源、目标、敌对、进度；家族写家族、家主、成员、姻亲、世仇、产业、门生、立场。没有变化可省略，但已有派系/家族被提到时要更新。
+- 朝堂门阀：分「派系」和「家族」两段。派系写派系名、领袖、成员、主张、资源、目标、敌对、进度；家族写家族、家主、成员、姻亲、世仇、产业、门生、立场。有多少派系/家族就写多少，不设上限；同一派系/家族只更新原条目，不新增同名条目。
 - 医疗健康（**有才生成**）：只有正文出现伤病、中毒、脉案、用药、太医诊治、孕产异常时才写；没有就留空数组，不要每回硬编。写人物、日期、症状、诊断、方子、太医、忌口、状态、备注。普通心情、普通请安不算医案；孕事仍走孕事页。
 - 子嗣（仅在模块开启时）：{{user}} 是玩家，在酒馆里会自动替换成人设名字；不管正文用什么名字，子嗣.用户 始终是玩家本人。模块开启时这个对象必须出现；没有变化就照抄当前累计/孕期/状态，不要漏掉。
 - 用户字段：本回次数（只写本回新增，累计由程序加）、受孕判定（未定/可能/已确认/未受孕）、孕期月（0-10）、状态（未孕/有孕/临盆/已生产/小产）、月事最近（日期/“未记”）、月事周期（天，世界书没写就 0）、月事持续（天，没写就 0）、排卵期（日期范围或“未记”）、排卵可能（高/中/低/未知）、发现（谁逐渐知道、知道多少）、备注。月事和排卵期按世界书、正文或太医记录写，不要自己编固定周期。
@@ -2342,7 +2413,7 @@ function buildEnabledModulesPrompt() {
     const medicalNote = s.medicalModule
         ? '\n医疗健康是条件模块：只有正文出现伤病、中毒、脉案、用药、太医诊治时才写；没有就留空数组，不要硬编。'
         : '';
-    return `\n\n【范围】NPC事件只写角色个人线，不写国家事件、邻国事件、边境/外交/朝议；这些放各自模块。\n【只增有用】伏笔、秘辛、流言、事件：先更新已有条目，只有真正的新线索才新增；不要每回堆新条目，已回收/已结束的不要重复。\n【命名硬性】所有人名必须写全名（姓+名），禁止只写姓氏、封号、职位、NPC、未记名；姓名只写姓名，位份/职位写进“身份”字段，不要写成“姓名·职位”或“姓氏+职位”；李承璟和{{user}}用原名。\n【禁止空话】有要求的字段不能写“无”“未记”“不详”，必须根据世界书、正文和时间线推演具体内容；实在没有信息就写合理推测，不要省略整块。\n【本回必须输出】${on.join('、')}。对应字段即使没有变化也必须出现；没有内容就输出空数组/当前状态，不要整块省略。${medicalNote}\n`;
+    return `\n\n【更新规则】已有条目写“更新”时，必须在原条目内覆盖修改，不能新增同名第二条；只有真正的新派系/家族/事件/伏笔/宴席才新增。\n【范围】NPC事件只写角色个人线，不写国家事件、邻国事件、边境/外交/朝议；这些放各自模块。\n【只增有用】伏笔、秘辛、流言、事件：先更新已有条目，只有真正的新线索才新增；不要每回堆新条目，已回收/已结束的不要重复。\n【命名硬性】所有人名必须写全名（姓+名），禁止只写姓氏、封号、职位、NPC、未记名；姓名只写姓名，位份/职位写进“身份”字段，不要写成“姓名·职位”或“姓氏+职位”；李承璟和{{user}}用原名。\n【禁止空话】有要求的字段不能写“无”“未记”“不详”，必须根据世界书、正文和时间线推演具体内容；实在没有信息就写合理推测，不要省略整块。\n【本回必须输出】${on.join('、')}。对应字段即使没有变化也必须出现；没有内容就输出空数组/当前状态，不要整块省略。${medicalNote}\n`;
 }
 
 function buildModuleHandbook() {
@@ -2741,7 +2812,7 @@ async function buildPromptPreview() {
         const msg = tid >= 0 ? getChatMessages(tid)[0] : null;
         if (msg && msg.role === 'assistant') ctx = stripGroupBlock(msg.message);
     } catch (e) { /* ignore */ }
-    const baselineText = JSON.stringify(baseline, null, 2).slice(0, 18000);
+    const baselineText = JSON.stringify(baseline, null, 2).slice(0, 30000);
     const worldbookText = await buildWorldbookPrompt(ctx + '\n' + baselineText);
     return wrapSubPrompt(core)
         + buildPersonaPrompt()
@@ -2777,7 +2848,7 @@ async function generateSub(settings, options) {
         } catch (e) { /* ignore */ }
     }
 
-    const baselineText = JSON.stringify(baseline, null, 2).slice(0, 18000);
+    const baselineText = JSON.stringify(baseline, null, 2).slice(0, 30000);
     const worldbookText = await buildWorldbookPrompt(ctx + '\n' + baselineText + '\n' + (opts.instruction || ''));
     const prompt = wrapSubPrompt(core)
         + buildPersonaPrompt()
