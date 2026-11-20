@@ -1,4 +1,4 @@
-const VERSION = '0.1.2';
+const VERSION = '0.1.4';
 let userNamesCache = { time: 0, names: [] };
 const HOST_ID = 'lx-group-host';
 const LEGACY_IDS = ['lx-ball', 'lx-panel', 'lx-mask', 'lx-settings', 'lx-group-style'];
@@ -69,6 +69,7 @@ const DEFAULT_SETTINGS = {
     trigger: 'auto',
     initialFill: 'auto',
     worldbookMode: 'follow',
+    worldbookEntries: {},
     presetName: '正常',
     subApiUrl: '',
     subApiKey: '',
@@ -145,10 +146,10 @@ const PRESET_DEFAULT = {
 【医疗健康字段】只有正文出现伤病/中毒/脉案/用药/太医诊治时才生成；没有就空数组。字段：人物、日期、症状、诊断、方子、太医、忌口、状态、备注。
 【节庆礼仪字段】已合并进时令：节日、礼仪、主礼、地点、座次、禁忌、节目、宴席。节日必须是古代节日，按年月日推算最近的节；礼仪、主礼、地点、座次、禁忌、节目都要按节日/门阀推演，不能写“未记”；宴席写名称、主家、地点、日期、宾客、目的。
 【孕事字段】人物、孕月、状态、风险、胎象、太医、饮食、行动、预计产期、知情者、备注。
-【孕事子女字段】后妃已有孩子就必须写，即使当前没怀孕；姓名、性别、身份、生母、亲缘、排行、出生、状态、备注。
+【孕事子女字段】后妃已有孩子就必须写，即使当前没怀孕；姓名、性别、身份、生母、亲缘、排行、年龄、出生、状态、备注。
 【子嗣输出字段】
 子嗣.用户：本回次数、受孕判定、孕期月、状态、月事最近、月事周期、月事持续、排卵期、排卵可能、发现、备注。
-子嗣.子女：姓名、性别、身份、生母、亲缘、排行、出生、状态、备注。
+子嗣.子女：姓名、性别、身份、生母、亲缘、排行、年龄、出生、状态、备注。
 
 【输出】
 {"NPC状态":{"具名":{"心情":"","位置":"","年龄":"","身份":"","当前所做":""}},"NPC事件":[{"事件名":"","角色":"","内容":"","进度":0,"伏笔":false}],"国家事件":[{"事件名":"","领域":"","内容":"","进度":0,"伏笔":false}],"邻国事件":[{"事件名":"","国家":"","领域":"","内容":"","进度":0,"伏笔":false}],"流言":[{"内容":"","伏笔":false}],"书信":[{"来源":"","内容":""}],"关系":[{"甲":"","乙":"","关系":""}],"伏笔":[{"内容":"","来源":"","已回收":false}]}
@@ -189,10 +190,10 @@ const PRESET_DEFAULT = {
 【医疗健康字段】只有正文出现伤病/中毒/脉案/用药/太医诊治时才生成；没有就空数组。字段：人物、日期、症状、诊断、方子、太医、忌口、状态、备注。
 【节庆礼仪字段】已合并进时令：节日、礼仪、主礼、地点、座次、禁忌、节目、宴席。节日必须是古代节日，按年月日推算最近的节；礼仪、主礼、地点、座次、禁忌、节目都要按节日/门阀推演，不能写“未记”；宴席写名称、主家、地点、日期、宾客、目的。
 【孕事字段】人物、孕月、状态、风险、胎象、太医、饮食、行动、预计产期、知情者、备注。
-【孕事子女字段】后妃已有孩子就必须写，即使当前没怀孕；姓名、性别、身份、生母、亲缘、排行、出生、状态、备注。
+【孕事子女字段】后妃已有孩子就必须写，即使当前没怀孕；姓名、性别、身份、生母、亲缘、排行、年龄、出生、状态、备注。
 【子嗣输出字段】
 子嗣.用户：本回次数、受孕判定、孕期月、状态、月事最近、月事周期、月事持续、排卵期、排卵可能、发现、备注。
-子嗣.子女：姓名、性别、身份、生母、亲缘、排行、出生、状态、备注。
+子嗣.子女：姓名、性别、身份、生母、亲缘、排行、年龄、出生、状态、备注。
 
 【字段字典】
 - NPC状态：心情=当下情绪；位置=此刻所在；年龄=数字；身份=位份/官职；当前所做=具体动作，不写“一切如常”。
@@ -253,16 +254,16 @@ NPC状态不设上限（只写有变化/值得续写的人）；NPC事件 1-3 �
 - 时令：只按正文明确日期更新；写年号/年/月/日/节气/节日/时辰/备注；不要自己推季节。
 - 孕事：开启时才写；写其他后妃的孕月、状态、风险、太医/宫人反应；{{user}}的孕事不写这里。
 - 孕事子女：后妃已生产的孩子；写姓名、性别、身份、生母、亲缘（按世界书）、排行、出生、状态；不写进子嗣。
-- 子嗣：只写{{user}}。用户字段：本回次数（只写新增）、受孕判定、孕期月、状态、月事最近、月事周期、月事持续、排卵期、排卵可能、发现、备注；子女字段：姓名、性别、身份、生母、亲缘、排行、出生、状态、备注。月事/排卵期按世界书/正文/太医记录详细写，没有就写“待定”，不能留空；亲缘按世界书写亲生/养子/过继/庶出/嫡出/不详，不默认亲生。
+- 子嗣：只写{{user}}。用户字段：本回次数（只写新增）、受孕判定、孕期月、状态、月事最近、月事周期、月事持续、排卵期、排卵可能、发现、备注；子女字段：姓名、性别、身份、生母、亲缘、排行、年龄、出生、状态、备注。月事/排卵期按世界书/正文/太医记录详细写，没有就写“待定”，不能留空；亲缘按世界书写亲生/养子/过继/庶出/嫡出/不详，不默认亲生。
 
 【朝堂门阀字段】派系：派系名、领袖、成员、主张、资源、目标、敌对、进度、备注。家族：家族、家主、成员、姻亲、世仇、产业、门生、立场、备注。
 【医疗健康字段】只有正文出现伤病/中毒/脉案/用药/太医诊治时才生成；没有就空数组。字段：人物、日期、症状、诊断、方子、太医、忌口、状态、备注。
 【节庆礼仪字段】已合并进时令：节日、礼仪、主礼、地点、座次、禁忌、节目、宴席。节日必须是古代节日，按年月日推算最近的节；礼仪、主礼、地点、座次、禁忌、节目都要按节日/门阀推演，不能写“未记”；宴席写名称、主家、地点、日期、宾客、目的。
 【孕事字段】人物、孕月、状态、风险、胎象、太医、饮食、行动、预计产期、知情者、备注。
-【孕事子女字段】后妃已有孩子就必须写，即使当前没怀孕；姓名、性别、身份、生母、亲缘、排行、出生、状态、备注。
+【孕事子女字段】后妃已有孩子就必须写，即使当前没怀孕；姓名、性别、身份、生母、亲缘、排行、年龄、出生、状态、备注。
 【子嗣输出字段】
 子嗣.用户：本回次数、受孕判定、孕期月、状态、月事最近、月事周期、月事持续、排卵期、排卵可能、发现、备注。
-子嗣.子女：姓名、性别、身份、生母、亲缘、排行、出生、状态、备注。
+子嗣.子女：姓名、性别、身份、生母、亲缘、排行、年龄、出生、状态、备注。
 
 【字段字典】
 - NPC状态：心情=当下情绪；位置=此刻所在；年龄=数字；身份=位份/官职；当前所做=具体动作，不写“一切如常”。
@@ -391,6 +392,34 @@ function clamp(value, min, max) {
 function toInt(value, fallback) {
     const n = Number(value);
     return Number.isFinite(n) ? Math.round(n) : fallback;
+}
+
+const NPC_TITLES = ['皇太后', '太后', '皇后', '贵妃', '淑妃', '德妃', '贤妃', '妃', '嫔', '贵人', '才人', '昭仪', '婕妤', '美人', '公主', '皇子', '王爷', '侯爷', '尚书', '侍郎', '将军', '太医', '御医', '大人', '陛下', '殿下'];
+
+function normalizeNpcDisplayName(name) {
+    let n = cleanName(name).replace(/[（(][^）)]*[）)]/g, '').trim();
+    if (!n) return inventNpcName(name);
+    if (/[·|｜]/.test(n)) {
+        const parts = n.split(/[·|｜]/).map(s => s.trim()).filter(Boolean);
+        n = parts.find(p => !NPC_TITLES.some(t => p === t)) || parts[0] || n;
+    }
+    // “沈微澜 淑妃”“沈微澜淑妃”“崔尚书” → 去掉尾部位份；只有一个姓时补全名。
+    for (const title of NPC_TITLES) {
+        if (n.length > title.length && n.endsWith(title)) {
+            const prefix = n.slice(0, -title.length).trim();
+            if (prefix.length >= 2) n = prefix;
+            else if (prefix.length === 1) n = prefix + inventNpcName(prefix + name).slice(1);
+            break;
+        }
+    }
+    for (const title of NPC_TITLES) {
+        if (n.length > title.length + 1 && n.startsWith(title)) {
+            n = n.slice(title.length).trim();
+            break;
+        }
+    }
+    if (isGenericNpcName(n) || NPC_TITLES.includes(n)) return inventNpcName(name);
+    return n;
 }
 
 function isGenericNpcName(name) {
@@ -899,7 +928,7 @@ function normalizeData(raw) {
     const npc = {};
     if (isPlainObject(out.NPC状态)) {
         Object.entries(out.NPC状态).forEach(([name, info]) => {
-            let n = cleanName(name);
+            let n = normalizeNpcDisplayName(name);
             if (isBlacklisted(n) || !isPlainObject(info)) return;
             const patch = normalizeNpcPatch(info);
             if (Object.keys(patch).length) {
@@ -1038,6 +1067,7 @@ function normalizeSettings(raw) {
     out.trigger = out.trigger === 'manual' ? 'manual' : 'auto';
     out.initialFill = out.initialFill === 'manual' ? 'manual' : 'auto';
     out.worldbookMode = ['follow', 'on', 'off'].includes(out.worldbookMode) ? out.worldbookMode : 'follow';
+    out.worldbookEntries = isPlainObject(out.worldbookEntries) ? out.worldbookEntries : {};
     out.presetName = String(out.presetName || '正常');
     out.subApiUrl = String(out.subApiUrl || '').trim();
     out.subApiKey = String(out.subApiKey || '').trim();
@@ -2283,7 +2313,7 @@ function buildExtraModulesPrompt() {
 "朝堂门阀":{"派系":[{"派系名":"","领袖":"","成员":[],"主张":"","资源":"","目标":"","敌对":[],"进度":0,"备注":""}],"家族":[{"家族":"","家主":"","成员":[],"姻亲":"","世仇":"","产业":"","门生":[],"立场":"","备注":""}]},
 "医疗健康":[{"人物":"","日期":"","症状":"","诊断":"","方子":"","太医":"","忌口":"","状态":"在治","备注":""}],
 "孕事子女":[{"姓名":"","性别":"男/女","身份":"","生母":"","亲缘":"不详","排行":1,"年龄":0,"出生":"","状态":"在世","备注":""}],
-"子嗣":{"用户":{"本回次数":0,"受孕判定":"未定","孕期月":0,"状态":"未孕","月事最近":"","月事周期":0,"月事持续":0,"排卵期":"","排卵可能":"","发现":[{"人物":"","程度":""}],"备注":""},"子女":[{"姓名":"","性别":"男","身份":"皇子","生母":"","亲缘":"不详","排行":1,"年龄":0,"出生":"","状态":"在世","备注":""}]}
+"子嗣":{"用户":{"本回次数":0,"受孕判定":"未定","孕期月":0,"状态":"未孕","月事最近":"","月事自定义":"","月事来源":"推演","月事周期":28,"月事持续":5,"排卵期":"","排卵可能":"","发现":[{"人物":"","程度":""}],"备注":""},"子女":[{"姓名":"","性别":"男","身份":"皇子","生母":"","亲缘":"不详","排行":1,"年龄":0,"出生":"","状态":"在世","备注":""}]}
 ${off.length ? '【本回关闭】' + off.join('、') + ' 对应字段留空，不要输出。' : ''}`;
 }
 
@@ -2297,7 +2327,7 @@ function buildEnabledModulesPrompt() {
     const medicalNote = s.medicalModule
         ? '\n医疗健康是条件模块：只有正文出现伤病、中毒、脉案、用药、太医诊治时才写；没有就留空数组，不要硬编。'
         : '';
-    return `\n\n【命名硬性】所有人名必须写全名（姓+名），禁止只写姓氏、封号、职位、NPC、未记名；李承璟和{{user}}用原名。\n【禁止空话】有要求的字段不能写“无”“未记”“不详”，必须根据世界书、正文和时间线推演具体内容；实在没有信息就写合理推测，不要省略整块。\n【本回必须输出】${on.join('、')}。对应字段即使没有变化也必须出现；没有内容就输出空数组/当前状态，不要整块省略。${medicalNote}\n`;
+    return `\n\n【命名硬性】所有人名必须写全名（姓+名），禁止只写姓氏、封号、职位、NPC、未记名；姓名只写姓名，位份/职位写进“身份”字段，不要写成“姓名·职位”或“姓氏+职位”；李承璟和{{user}}用原名。\n【禁止空话】有要求的字段不能写“无”“未记”“不详”，必须根据世界书、正文和时间线推演具体内容；实在没有信息就写合理推测，不要省略整块。\n【本回必须输出】${on.join('、')}。对应字段即使没有变化也必须出现；没有内容就输出空数组/当前状态，不要整块省略。${medicalNote}\n`;
 }
 
 function buildModuleHandbook() {
@@ -2496,7 +2526,7 @@ function buildPregnancyPrompt() {
 - 没有孕事就输出空数组，不要编造。
 格式：
 "孕事": [{"人物":"", "孕月":0, "状态":"", "风险":"", "胎象":"", "太医":"", "饮食":"", "行动":"", "预计产期":"", "知情者":[{"人物":"","程度":"部分"}], "备注":""}],
-"孕事子女": [{"姓名":"","性别":"男/女","身份":"","生母":"","排行":1,"出生":"","状态":"在世","备注":""}]`;
+"孕事子女": [{"姓名":"","性别":"男/女","身份":"","生母":"","亲缘":"不详","排行":1,"年龄":0,"出生":"","状态":"在世","备注":""}]`;
 }
 
 let worldbookCache = { time: 0, key: '', text: '' };
@@ -2533,6 +2563,60 @@ function getWorldbookNamesForPrompt() {
     return Array.from(names).filter(Boolean);
 }
 
+function worldbookEntryId(bookName, entry, index) {
+    const title = String(entry && (entry.comment || entry.name || entry.标题) || '').trim();
+    return String(bookName || '') + '::' + (title || 'entry-' + index);
+}
+
+function getWorldbookEntryList() {
+    const out = [];
+    const books = new Set();
+    const addBook = value => {
+        if (!value) return;
+        if (Array.isArray(value)) { value.forEach(addBook); return; }
+        if (typeof value === 'object') {
+            ['primary', 'additional', 'worldbook', 'name'].forEach(k => addBook(value[k]));
+            return;
+        }
+        if (typeof value === 'string' && value.trim()) books.add(value.trim());
+    };
+    try {
+        if (typeof getCharWorldbookNames === 'function') addBook(getCharWorldbookNames('current'));
+    } catch (e) { /* ignore */ }
+    for (const bookName of books) {
+        let list = null;
+        try {
+            if (typeof getWorldbook === 'function') list = getWorldbook(bookName);
+        } catch (e) { /* ignore */ }
+        if (!list) {
+            try {
+                if (typeof getLorebookEntries === 'function') list = getLorebookEntries(bookName);
+            } catch (e) { /* ignore */ }
+        }
+        if (!Array.isArray(list)) list = list && Array.isArray(list.entries) ? list.entries : [];
+        list.forEach((entry, index) => {
+            if (!entry) return;
+            const content = String(entry.content || entry.内容 || '').trim();
+            const title = String(entry.comment || entry.name || entry.标题 || '').trim();
+            if (!content && !title) return;
+            out.push({
+                book: bookName,
+                id: worldbookEntryId(bookName, entry, index),
+                title: title || `条目 ${index + 1}`,
+                keys: [].concat(entry.key || [], entry.keys || entry.关键字 || []).flatMap(x => String(x).split(/[,，、\s]+/)).filter(Boolean).slice(0, 12),
+                content: content,
+                enabled: entry.enabled !== false && entry.disabled !== true
+            });
+        });
+    }
+    return out;
+}
+
+function isWorldbookEntryEnabled(id) {
+    const map = getSettings().worldbookEntries || {};
+    return map[id] !== false;
+}
+
 function collectWorldbookContext(haystack) {
     const context = String(haystack || '').toLowerCase();
     const mode = getSettings().worldbookMode || 'follow';
@@ -2543,10 +2627,11 @@ function collectWorldbookContext(haystack) {
     if (worldbookCache.text && worldbookCache.key === cacheKey && now - worldbookCache.time < 30000) return worldbookCache.text;
     const chunks = [];
     const seen = new Set();
-    const addEntries = list => {
+    const addEntries = (list, bookName) => {
         if (!Array.isArray(list)) list = list && Array.isArray(list.entries) ? list.entries : [];
-        list.forEach(entry => {
+        list.forEach((entry, index) => {
             if (!entry || entry.enabled === false || entry.disabled === true) return;
+            if (!isWorldbookEntryEnabled(worldbookEntryId(bookName, entry, index))) return;
             const content = String(entry.content || entry.内容 || '').trim();
             if (!content) return;
             const title = String(entry.comment || entry.name || entry.标题 || '').trim();
@@ -2571,7 +2656,7 @@ function collectWorldbookContext(haystack) {
                 if (typeof getLorebookEntries === 'function') list = getLorebookEntries(name);
             } catch (e) { /* ignore */ }
         }
-        addEntries(list);
+        addEntries(list, name);
         if (chunks.join('\n').length > 8000) break;
     }
     const text = chunks.join('\n').slice(0, 8000);
@@ -3904,6 +3989,14 @@ const CSS = `
     font-weight: 700;
 }
 .lx-field-hint { color: var(--lx-dim); font-size: 10.5px; font-style: italic; margin-top: 5px; line-height: 1.5; }
+.lx-wb-list { max-height: 260px; overflow: auto; margin-top: 7px; border: 1px solid var(--lx-border); background: var(--lx-event-bg); }
+.lx-wb-item { display: block; padding: 7px 8px; border-bottom: 1px solid var(--lx-border); cursor: pointer; }
+.lx-wb-item:last-child { border-bottom: 0; }
+.lx-wb-item input { width: 13px; height: 13px; accent-color: var(--lx-gold); vertical-align: middle; margin-right: 5px; }
+.lx-wb-title { color: var(--lx-gold); font-size: 11px; }
+.lx-wb-book { margin-left: 6px; color: var(--lx-dim); font-size: 9px; }
+.lx-wb-keys { display: block; margin: 3px 0 0 18px; color: var(--lx-text2); font-size: 9px; }
+.lx-wb-preview { display: block; margin: 3px 0 0 18px; color: var(--lx-dim); font-size: 9.5px; line-height: 1.55; }
 .lx-input, .lx-textarea, .lx-select {
     width: 100%;
     padding: 8px 10px;
@@ -5942,6 +6035,19 @@ function checkRow(id, checked, label) {
     return `<label class="lx-radio ${checked ? 'checked' : ''}"><input type="checkbox" id="${id}" ${checked ? 'checked' : ''}>${label}</label>`;
 }
 
+function worldbookSettingsHTML() {
+    let entries = [];
+    try { entries = getWorldbookEntryList(); } catch (e) { /* ignore */ }
+    if (!entries.length) return '<div class="lx-field-hint">当前角色卡没有绑定可读世界书，或酒馆世界书已关闭。</div>';
+    return entries.slice(0, 80).map(entry => `<label class="lx-wb-item">
+        <input type="checkbox" data-action="wb-toggle" data-wb-id="${escapeAttr(entry.id)}" ${isWorldbookEntryEnabled(entry.id) ? 'checked' : ''}>
+        <span class="lx-wb-title">${escapeHtml(entry.title)}</span>
+        <span class="lx-wb-book">${escapeHtml(entry.book)}</span>
+        ${entry.keys.length ? `<span class="lx-wb-keys">${escapeHtml(entry.keys.join(' / '))}</span>` : ''}
+        <span class="lx-wb-preview">${escapeHtml((entry.content || '').slice(0, 220))}</span>
+    </label>`).join('');
+}
+
 function buildSettingsHTML() {
     const s = getSettings();
     const presets = getPresets();
@@ -6020,6 +6126,7 @@ function buildSettingsHTML() {
                     <option value="off" ${s.worldbookMode === 'off' ? 'selected' : ''}>关闭世界书注入</option>
                 </select>
                 <div class="lx-field-hint">只读取当前角色卡绑定的世界书，不读全局；跟随酒馆时，酒馆世界书关闭则不注入。</div>
+                <div class="lx-wb-list">${worldbookSettingsHTML()}</div>
             </div>
             <div class="lx-field">
                 <label class="lx-field-label">提示词预览</label>
@@ -6995,6 +7102,15 @@ async function handleAction(action, element) {
         case 'data-edit':
             openDataEditor();
             return;
+        case 'wb-toggle': {
+            const id = element.dataset.wbId || '';
+            if (!id) return;
+            const map = Object.assign({}, getSettings().worldbookEntries || {});
+            map[id] = !isWorldbookEntryEnabled(id);
+            saveSettings({ worldbookEntries: map });
+            openSettings('basic');
+            return;
+        }
         case 'follow-toggle': {
             const name = element.dataset.name || '';
             if (!name) return;
