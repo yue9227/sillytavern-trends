@@ -1,4 +1,4 @@
-const VERSION = '0.0.6';
+const VERSION = '0.0.7';
 let userNamesCache = { time: 0, names: [] };
 const HOST_ID = 'lx-group-host';
 const LEGACY_IDS = ['lx-ball', 'lx-panel', 'lx-mask', 'lx-settings', 'lx-group-style'];
@@ -217,6 +217,8 @@ const state = {
     searchTimer: 0,
     autoStartId: -1,
     initialTried: false,
+    swipedId: -1,
+    swipeAt: 0,
     ui: {
         tab: 'NPC状态',
         settingsTab: 'basic',
@@ -805,7 +807,7 @@ function hasContent(fresh) {
     if (isPlainObject(fresh.时令) && Object.values(fresh.时令).some(value => value)) return true;
     if (isPlainObject(fresh.子嗣)) {
         const user = fresh.子嗣.用户 || {};
-        if (user.本回次数 || user.内射次数 || user.受孕判定 || user.孕期月 || user.状态 && user.状态 !== '未孕') return true;
+        if (user.本回次数 || user.内射次数 || user.受孕判定 || user.孕期月 || user.月事最近 || user.排卵期 || user.状态 && user.状态 !== '未孕') return true;
         if (Array.isArray(fresh.子嗣.子女) && fresh.子嗣.子女.length) return true;
     }
     return ['NPC事件', '国家事件', '邻国事件', '流言', '书信', '关系', '伏笔', '孕事', '孕事子女', '奏折', '秘辛', '斗争']
@@ -1453,6 +1455,11 @@ function normalizeHeirUser(raw, round) {
         受孕判定: String(user.受孕判定 || user.受孕 || '未定').trim().slice(0, 12),
         孕期月: month,
         状态: status || '未孕',
+        月事最近: String((isPlainObject(user.月事) ? user.月事.最近 : user.月事最近) || '').trim().slice(0, 40),
+        月事周期: clamp(toInt((isPlainObject(user.月事) ? user.月事.周期 : user.月事周期), 0), 0, 60),
+        月事持续: clamp(toInt((isPlainObject(user.月事) ? user.月事.持续 : user.月事持续), 0), 0, 15),
+        排卵期: String((isPlainObject(user.排卵期) ? user.排卵期.日期 : user.排卵期) || '').trim().slice(0, 60),
+        排卵可能: String((isPlainObject(user.排卵期) ? user.排卵期.可能 : user.排卵可能) || '').trim().slice(0, 20),
         发现: normalizeKnowers(user.发现 || user.知情者 || []),
         备注: String(user.备注 || '').trim().slice(0, 300),
         回合: toInt(user.回合, round || 0) || 0
@@ -1470,6 +1477,7 @@ function normalizeChild(item, round) {
         性别: gender,
         身份: identity,
         生母: String(item.生母 || item.母亲 || '').trim().slice(0, 40),
+        亲缘: String(item.亲缘 || item.血缘 || '不详').trim().slice(0, 20),
         排行: Math.max(0, toInt(item.排行 || item.序齿, 0)),
         出生: String(item.出生 || item.生辰 || '').trim().slice(0, 60),
         状态: String(item.状态 || '在世').trim().slice(0, 20),
@@ -1484,7 +1492,7 @@ function normalizeHeir(raw, round) {
         用户: normalizeHeirUser(obj.用户 || obj.user || {}, round),
         子女: (Array.isArray(obj.子女) ? obj.子女 : [])
             .map(item => normalizeChild(item, round))
-            .filter(item => item && (!item.生母 || isLeadName(item.生母)))
+            .filter(Boolean)
     };
 }
 
@@ -1519,6 +1527,11 @@ function mergeHeir(oldHeir, freshHeir, round) {
     if (fresh.用户.受孕判定 && fresh.用户.受孕判定 !== '未定') user.受孕判定 = fresh.用户.受孕判定;
     if (fresh.用户.孕期月) user.孕期月 = Math.max(user.孕期月 || 0, fresh.用户.孕期月);
     if (fresh.用户.状态 && fresh.用户.状态 !== '未孕') user.状态 = fresh.用户.状态;
+    ['月事最近', '排卵期', '排卵可能'].forEach(key => {
+        if (fresh.用户[key]) user[key] = fresh.用户[key];
+    });
+    if (fresh.用户.月事周期) user.月事周期 = fresh.用户.月事周期;
+    if (fresh.用户.月事持续) user.月事持续 = fresh.用户.月事持续;
     if (fresh.用户.备注) user.备注 = fresh.用户.备注;
     user.发现 = normalizeKnowers(old.用户.发现.concat(fresh.用户.发现));
     user.回合 = old.用户.回合 || round;
@@ -1630,9 +1643,7 @@ function mergeGroupData(oldData, fresh) {
     if (getSettings().pregnancyModule) {
         out.孕事 = derivePregnancies(out.NPC状态, out.孕事, round);
     }
-    if (getSettings().heirModule) {
-        out.子嗣 = mergeHeir(out.子嗣, fresh.子嗣, round);
-    }
+    out.子嗣 = mergeHeir(out.子嗣, fresh.子嗣, round);
 
     if (getSettings().foreshadowAi) {
         const auto = [];
@@ -1793,12 +1804,12 @@ function buildExtraModulesPrompt() {
 - 奏折（1-3 条）：朝堂公文，不是普通事件。写清标题、上奏人、衙门、事由、主张、反对、状态（待议/留中/准奏/驳回/已结）。没有就写空数组。
 - 秘辛（0-2 条）：只记值得藏的 secret。内容、涉及谁、证据/把柄。知情者写“谁、知道多少”（全知/部分/怀疑/只知片段）；不知情者写“谁还不知道”。**李承璟和{{user}}也可以知道或不知道，照实写进知情者/不知情者，不要漏掉他们。**
 - 流言（0-2 条）：除了内容，还要写来源人物、传播链（谁传给谁、版本变成什么）、可信度（真/半真/假/未知）。传播链 2-4 人即可。
-- 孕事：只记后妃/其他 NPC 的有孕月份与状态；{{user}} 的孕事写在“子嗣.用户”里，不要混进孕事。
+- 孕事：只记后妃/其他 NPC 的有孕月份与状态；{{user}} 的孕事写在“子嗣.用户”里，不要混进孕事。后妃已经生产、世界书里已有孩子的，必须写进“孕事子女”；生母写后妃名，亲缘按世界书写（亲生/养子/过继/庶出/嫡出/不详），不要默认亲生。
 - 时令：只有正文出现明确日期、节气、节日、时辰时才更新。写年号、年、月、日、节气、节日、时辰、备注；没有就留空对象。
 - 斗争（0-2 条）：宫斗或政斗。只在有明确动机、利益冲突、行动条件时记录；不要每回硬造。写类型（宫斗/政斗）、事件名、发起者、目标、手段、烈度（低/中/高）、阶段（策划/执行/调查/反制/收场）、证据、知情者、进度、结果。结果开放，不保证成功；不替{{user}}决定中计、受伤、失宠或站队；信息有限，不知道的人不要写成知道。
 - 子嗣（仅在模块开启时）：{{user}} 是玩家，在酒馆里会自动替换成人设名字；不管正文用什么名字，子嗣.用户 始终是玩家本人。模块开启时这个对象必须出现；没有变化就照抄当前累计/孕期/状态，不要漏掉。
-- 用户字段：本回次数（只写本回新增，累计由程序加）、受孕判定（未定/可能/已确认/未受孕）、孕期月（0-10）、状态（未孕/有孕/临盆/已生产/小产）、发现（谁逐渐知道、知道多少）、备注。只做记录，不写露骨过程，不替{{user}}决定感受、是否留下或是否生产。
-- 子女：只写{{user}}所出的孩子，只在出生后写。字段：姓名、性别、身份（太子/太女/王爷/公主/皇子/皇女）、生母、排行、出生、状态（在世/夭折/过继）、备注；不要提前写未出生孩子的性别和封号。后妃所出的孩子写到“孕事子女”，不要写进子嗣。
+- 用户字段：本回次数（只写本回新增，累计由程序加）、受孕判定（未定/可能/已确认/未受孕）、孕期月（0-10）、状态（未孕/有孕/临盆/已生产/小产）、月事最近（日期/“未记”）、月事周期（天，世界书没写就 0）、月事持续（天，没写就 0）、排卵期（日期范围或“未记”）、排卵可能（高/中/低/未知）、发现（谁逐渐知道、知道多少）、备注。月事和排卵期按世界书、正文或太医记录写，不要自己编固定周期。
+- 子女：只写记在{{user}}名下的孩子，只在出生后写。是否亲生、养子、过继、庶出、嫡出按世界书/正文写进“亲缘”，不要默认亲生。字段：姓名、性别、身份（太子/太女/王爷/公主/皇子/皇女）、生母、亲缘、排行、出生、状态（在世/夭折/过继）、备注；不要提前写未出生孩子的性别和封号。后妃所出的孩子写到“孕事子女”，不要写进子嗣。
   · 孕月建议只作参考：1-3 月防不稳，4-6 月显怀与安胎，7-8 月备产，9-10 月临盆；不要写成医学诊断。
   · 宫斗烈度：低=口舌、份例、礼仪刁难；中=收买宫人、造谣、栽赃；高=皇嗣、巫蛊、谋逆，必须有充分铺垫。
   · 政斗烈度：低=朝议分歧、考核、调任；中=弹劾、财政亏空、边境摩擦；高=战争、谋逆、继承危机，必须符合国力与权限。
@@ -1817,13 +1828,22 @@ function buildExtraModulesPrompt() {
 "流言":[{"内容":"","来源人物":"","传播链":[{"人物":"","版本":""}],"可信度":"未知","伏笔":false}],
 "时令":{"年号":"","年":0,"月":0,"日":0,"节气":"","节日":"","时辰":"","备注":""},
 "斗争":[{"类型":"宫斗","事件名":"","发起者":"","目标":"","手段":"","烈度":"低","阶段":"策划","证据":"","知情者":[{"人物":"","程度":"部分"}],"进度":0,"结果":""}],
-"孕事子女":[{"姓名":"","性别":"男/女","身份":"","生母":"","排行":1,"出生":"","状态":"在世","备注":""}],
-"子嗣":{"用户":{"本回次数":0,"受孕判定":"未定","孕期月":0,"状态":"未孕","发现":[{"人物":"","程度":""}],"备注":""},"子女":[{"姓名":"","性别":"男","身份":"皇子","生母":"","排行":1,"出生":"","状态":"在世","备注":""}]}
+"孕事子女":[{"姓名":"","性别":"男/女","身份":"","生母":"","亲缘":"不详","排行":1,"出生":"","状态":"在世","备注":""}],
+"子嗣":{"用户":{"本回次数":0,"受孕判定":"未定","孕期月":0,"状态":"未孕","月事最近":"","月事周期":0,"月事持续":0,"排卵期":"","排卵可能":"","发现":[{"人物":"","程度":""}],"备注":""},"子女":[{"姓名":"","性别":"男","身份":"皇子","生母":"","亲缘":"不详","排行":1,"出生":"","状态":"在世","备注":""}]}
 ${off.length ? '【本回关闭】' + off.join('、') + ' 对应字段留空，不要输出。' : ''}`;
 }
 
+function buildEnabledModulesPrompt() {
+    const s = getSettings();
+    const on = [];
+    if (s.pregnancyModule) on.push('孕事 + 孕事子女');
+    if (s.heirModule) on.push('子嗣（用户 + 子女）');
+    if (!on.length) return '';
+    return `\n\n【本回必须输出】${on.join('、')}。对应字段即使没有变化也必须出现；没有内容就输出空数组/当前状态，不要整块省略。\n`;
+}
+
 function wrapSubPrompt(core) {
-    return core + buildExtraModulesPrompt() + buildEventContext() + `\n\n【输出格式（必须遵守）】
+    return buildEnabledModulesPrompt() + core + buildExtraModulesPrompt() + buildPregnancyPrompt() + buildEventContext() + `\n\n【输出格式（必须遵守）】
 只输出一个合法 JSON 对象，不要输出解释、前后缀或 Markdown 代码块。`;
 }
 
@@ -1949,7 +1969,7 @@ function buildPregnancyPrompt() {
 - 只写身份为后妃、嫔御、贵人、才人、皇后等的具名女子；不要写{{user}}、李承璟、陛下、圣上。
 - 字段：人物、孕月（1-10 的整数）、状态（稳定/不稳/临盆/小产/已生产 等）、备注（可选）。
 - 已生产、小产、流产的孕事要写清楚状态，程序会自动归入“已结束”。
-- 后妃生产后，子女写到“孕事子女”：姓名、性别、身份（太子/太女/王爷/公主/皇子/皇女）、生母、排行、出生、状态；不要写进“子嗣”。
+- 后妃生产后，子女写到“孕事子女”：姓名、性别、身份（太子/太女/王爷/公主/皇子/皇女）、生母、亲缘（按世界书写亲生/养子/过继/庶出/嫡出/不详）、排行、出生、状态；不要写进“子嗣”。
 - 没有孕事就输出空数组，不要编造。
 格式：
 "孕事": [{"人物":"", "孕月":0, "状态":"", "备注":""}],
@@ -1984,7 +2004,6 @@ async function generateSub(settings, options) {
 
     const baselineText = JSON.stringify(baseline, null, 2).slice(0, 18000);
     const prompt = wrapSubPrompt(core)
-        + buildPregnancyPrompt()
         + (opts.initial ? '\n\n【开局补全】这是第一次补全：结合世界书、人设、开场白和最初几层对话，建立所有已出现和世界书提到的 NPC、国家事件、时令与线索；不要只写眼前几个人。' : '')
         + `\n\n【当前群像状态】\n` + baselineText
         + `\n\n【本回正文】\n` + ctx.slice(0, 12000);
@@ -2048,7 +2067,9 @@ async function handleAiMessage(messageId, type) {
     if (!msg || msg.role !== 'assistant' || msg.is_hidden) return;
     // 打开角色卡/切换聊天时，已有的开场白和旧楼层不自动推演；
     // 只有载入后新生成的楼层，或手动点“生成”，才会调用 API。
-    if (messageId <= state.autoStartId) return;
+    // 但刚刚滑动/重roll 的那一层必须放行，否则它会正好等于 autoStartId 而被误判成旧楼层。
+    const recentSwipe = state.swipedId === messageId && (Date.now() - state.swipeAt) < 8000;
+    if (messageId <= state.autoStartId && type !== 'swipe' && !recentSwipe) return;
 
     const noData = !getGroupData();
     const initialWindow = noData && !state.initialTried && messageId <= 3;
@@ -2229,6 +2250,8 @@ async function handleSwipe(messageId) {
         try { id = getLatestAssistantId(); } catch (e) { id = -1; }
     }
     if (Number.isFinite(id) && id >= 0) {
+        state.swipedId = id;
+        state.swipeAt = Date.now();
         await clearGroupDataFromMessage(id);
     }
     if (!getGroupData()) state.initialTried = false;
@@ -2389,6 +2412,9 @@ const CSS = `
     border: 0 !important;
     background: #120c07;
 }
+.lx-ball-tassel, .lx-ball-spark { position: absolute; display: none; pointer-events: none; z-index: 2; }
+#lx-ball.has-custom-image .lx-ball-tassel,
+#lx-ball.has-custom-image .lx-ball-spark { display: none !important; }
 
 /* 悬浮球外观：罗盘 / 宫灯 / 玉玺 / 铜镜 / 竹简 */
 #lx-ball.style-lantern:not(.has-custom-image) {
@@ -2486,6 +2512,165 @@ const CSS = `
 #lx-ball.style-bamboo .lx-ball-core,
 #lx-ball.style-bamboo .lx-ball-gem { display: none; }
 #lx-ball.style-bamboo .lx-ball-halo { background: radial-gradient(circle, rgba(130,160,110,.25), transparent 68%); }
+
+/* 华丽动效：宫灯 / 玉玺 / 铜镜 / 竹简 */
+#lx-ball.style-lantern .lx-ball-ring {
+    display: block;
+    inset: 3px;
+    border-radius: 0;
+    background: repeating-linear-gradient(90deg, rgba(240,200,120,.40) 0 1px, transparent 1px 7px);
+    -webkit-mask: none;
+    mask: none;
+    animation: lx-lantern-slats 4s ease-in-out infinite;
+    opacity: .55;
+}
+#lx-ball.style-lantern .lx-ball-core {
+    animation: lx-flame 2.4s ease-in-out infinite;
+    transform-origin: 50% 55%;
+}
+#lx-ball.style-lantern .lx-ball-halo { animation: lx-lantern-glow 3.2s ease-in-out infinite; }
+#lx-ball.style-lantern .lx-ball-tassel {
+    display: block;
+    left: 50%;
+    bottom: 0;
+    width: 2px;
+    height: 12px;
+    margin-left: -1px;
+    background: linear-gradient(180deg, #f0c878, #8a3d1d 60%, transparent);
+    box-shadow: 0 0 4px rgba(240,190,100,.55);
+    transform-origin: 50% 0;
+    animation: lx-tassel 3s ease-in-out infinite;
+}
+#lx-ball.style-lantern::after { animation: lx-lantern-surface 5s ease-in-out infinite; }
+
+#lx-ball.style-seal .lx-ball-ring {
+    display: block;
+    inset: 7px;
+    border: 1px solid rgba(226,205,145,.42);
+    border-radius: 1px;
+    background: transparent;
+    -webkit-mask: none;
+    mask: none;
+    animation: lx-seal-ring 3.6s ease-in-out infinite;
+}
+#lx-ball.style-seal .lx-ball-spark {
+    display: block;
+    width: 3px; height: 3px;
+    right: 7px; top: 7px;
+    border-radius: 50%;
+    background: #fff6d2;
+    box-shadow: 0 0 5px #f5e0a2;
+    animation: lx-spark 2.8s ease-in-out infinite;
+}
+#lx-ball.style-seal .lx-ball-halo { animation: lx-seal-glow 3.6s ease-in-out infinite; }
+#lx-ball.style-seal::before { animation: lx-knob 3.6s ease-in-out infinite; }
+
+#lx-ball.style-mirror .lx-ball-ring {
+    display: block;
+    inset: 10%;
+    border: 1px dashed rgba(255,236,190,.42);
+    background: transparent;
+    -webkit-mask: none;
+    mask: none;
+    animation: lx-mirror-spin 16s linear infinite;
+}
+#lx-ball.style-mirror .lx-ball-spark {
+    display: block;
+    width: 4px; height: 4px;
+    right: 8px; top: 8px;
+    border-radius: 50%;
+    background: #fffdf0;
+    box-shadow: 0 0 6px #fff2b0, 0 0 12px rgba(255,240,180,.6);
+    animation: lx-spark 3.4s ease-in-out infinite;
+}
+#lx-ball.style-mirror .lx-ball-core { animation: lx-mirror-knob 4.4s ease-in-out infinite; }
+#lx-ball.style-mirror .lx-ball-halo { animation: lx-mirror-glow 4.4s ease-in-out infinite; }
+
+#lx-ball.style-bamboo .lx-ball-ring {
+    display: block;
+    inset: 0;
+    border-radius: 2px;
+    background: linear-gradient(180deg, transparent 0%, rgba(255,245,190,.30) 40%, transparent 78%);
+    -webkit-mask: none;
+    mask: none;
+    animation: lx-bamboo-light 4.8s ease-in-out infinite;
+}
+#lx-ball.style-bamboo .lx-ball-tassel {
+    display: block;
+    left: 50%;
+    bottom: 0;
+    width: 2px;
+    height: 10px;
+    margin-left: -1px;
+    background: linear-gradient(180deg, #d9b46a, #6b3f2d 70%, transparent);
+    transform-origin: 50% 0;
+    animation: lx-tassel 4s ease-in-out infinite;
+}
+#lx-ball.style-bamboo .lx-ball-spark {
+    display: block;
+    width: 2px; height: 2px;
+    left: 9px; bottom: 10px;
+    border-radius: 50%;
+    background: #fff6d2;
+    box-shadow: 0 0 5px #e8d38a;
+    animation: lx-spark 4.6s ease-in-out infinite;
+}
+#lx-ball.style-bamboo .lx-ball-halo { animation: lx-bamboo-glow 4.8s ease-in-out infinite; }
+
+@keyframes lx-lantern-slats {
+    0%, 100% { opacity: .42; background-position: 0 0; }
+    50% { opacity: .72; background-position: 2px 0; }
+}
+@keyframes lx-flame {
+    0%, 100% { transform: scale(.92); box-shadow: 0 0 12px rgba(255,190,90,.55); }
+    50% { transform: scale(1.06); box-shadow: 0 0 26px rgba(255,210,110,.9); }
+}
+@keyframes lx-lantern-glow {
+    0%, 100% { opacity: .55; transform: scale(.96); }
+    50% { opacity: 1; transform: scale(1.08); }
+}
+@keyframes lx-lantern-surface {
+    0%, 100% { opacity: .65; }
+    50% { opacity: 1; }
+}
+@keyframes lx-tassel {
+    0%, 100% { transform: rotate(-5deg); }
+    50% { transform: rotate(5deg); }
+}
+@keyframes lx-seal-ring {
+    0%, 100% { box-shadow: inset 0 0 0 1px rgba(255,240,190,.12); opacity: .55; }
+    50% { box-shadow: inset 0 0 8px rgba(255,240,190,.32); opacity: 1; }
+}
+@keyframes lx-spark {
+    0%, 100% { opacity: 0; transform: scale(.5); }
+    45% { opacity: 1; transform: scale(1.2); }
+    60% { opacity: .35; transform: scale(.8); }
+}
+@keyframes lx-seal-glow {
+    0%, 100% { opacity: .45; transform: scale(.96); }
+    50% { opacity: .9; transform: scale(1.05); }
+}
+@keyframes lx-knob {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(1.3); }
+}
+@keyframes lx-mirror-spin { to { transform: rotate(360deg); } }
+@keyframes lx-mirror-knob {
+    0%, 100% { box-shadow: 0 0 0 2px rgba(60,40,20,.35), 0 0 8px rgba(255,230,170,.18); }
+    50% { box-shadow: 0 0 0 2px rgba(60,40,20,.35), 0 0 18px rgba(255,240,190,.55); }
+}
+@keyframes lx-mirror-glow {
+    0%, 100% { opacity: .5; transform: scale(.96); }
+    50% { opacity: 1; transform: scale(1.06); }
+}
+@keyframes lx-bamboo-light {
+    0%, 100% { background-position: 0 -20px; opacity: .35; }
+    50% { background-position: 0 35px; opacity: .9; }
+}
+@keyframes lx-bamboo-glow {
+    0%, 100% { opacity: .5; transform: scale(.97); }
+    50% { opacity: .9; transform: scale(1.05); }
+}
 
 .lx-ball-style-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
 .lx-ball-style-item {
@@ -3629,6 +3814,8 @@ const SHELL_HTML = `
         <span class="lx-ball-ring"></span>
         <span class="lx-ball-core"></span>
         <span class="lx-ball-gem"></span>
+        <span class="lx-ball-tassel" aria-hidden="true"></span>
+        <span class="lx-ball-spark" aria-hidden="true"></span>
         <span class="lx-ball-dot" aria-hidden="true"></span>
     </div>
     <div id="lx-mask" aria-hidden="true"></div>
@@ -4469,7 +4656,7 @@ function renderPregnancy(list, children) {
         .map((item, index) => ({ item, index }))
         .filter(({ item }) => !isBlacklisted(item.人物) && textMatch(item.人物, item.状态, item.备注));
     const kids = (Array.isArray(children) ? children : [])
-        .filter(item => textMatch(item.姓名, item.性别, item.身份, item.生母, item.状态, item.备注));
+        .filter(item => textMatch(item.姓名, item.性别, item.身份, item.生母, item.亲缘, item.状态, item.备注));
     if (!rows.length && !kids.length) {
         setPanel('孕事', emptyText('暂无孕事') + '<div style="text-align:center;margin-top:10px;"><button type="button" class="lx-mini-btn" data-action="preg-add">+ 添加孕事</button></div>');
         return;
@@ -4478,7 +4665,17 @@ function renderPregnancy(list, children) {
         if (a.item.已结束 !== b.item.已结束) return a.item.已结束 ? 1 : -1;
         return (b.item.孕月 || 0) - (a.item.孕月 || 0);
     });
-    let html = rows.map(({ item, index }) => {
+    let html = '';
+    if (kids.length) {
+        html += `<div class="lx-npc-group-title">后妃所出子女 · ${kids.length}</div>`;
+        html += kids.map(item => `<div class="lx-heir-child">
+            <div class="lx-heir-child-head"><span class="lx-heir-child-name">${escapeHtml(item.姓名)}</span><span class="lx-heir-child-title">${escapeHtml(item.身份 || (item.性别 === '女' ? '皇女' : '皇子'))}</span></div>
+            <div class="lx-heir-line"><b>性别</b>${escapeHtml(item.性别)}　<b>生母</b>${escapeHtml(displayPersonName(item.生母) || '不详')}　<b>排行</b>${item.排行 ? '第' + item.排行 : '未序'}</div>
+            <div class="lx-heir-line"><b>亲缘</b>${escapeHtml(item.亲缘 || '不详')}　<b>出生</b>${escapeHtml(item.出生 || '未记')}　<b>状态</b>${escapeHtml(item.状态 || '在世')}</div>
+            ${item.备注 ? `<div class="lx-preg-note">${escapeHtml(item.备注)}</div>` : ''}
+        </div>`).join('');
+    }
+    html += rows.map(({ item, index }) => {
         const cls = item.已结束 ? 'lx-preg-card ended' : 'lx-preg-card';
         return `<div class="${cls}">
             <div><span class="lx-preg-name">${escapeHtml(item.人物)}</span><span class="lx-preg-month">${item.孕月 ? '孕 ' + item.孕月 + ' 月' : '孕月未录'}</span></div>
@@ -4488,15 +4685,6 @@ function renderPregnancy(list, children) {
             <div style="text-align:right;margin-top:6px;"><button type="button" class="lx-mini-btn" data-action="preg-edit" data-idx="${index}">改</button></div>
         </div>`;
     }).join('');
-    if (kids.length) {
-        html += `<div class="lx-npc-group-title">后妃所出子女 · ${kids.length}</div>`;
-        html += kids.map(item => `<div class="lx-heir-child">
-            <div class="lx-heir-child-head"><span class="lx-heir-child-name">${escapeHtml(item.姓名)}</span><span class="lx-heir-child-title">${escapeHtml(item.身份 || (item.性别 === '女' ? '皇女' : '皇子'))}</span></div>
-            <div class="lx-heir-line"><b>性别</b>${escapeHtml(item.性别)}　<b>生母</b>${escapeHtml(item.生母 || '不详')}　<b>排行</b>${item.排行 ? '第' + item.排行 : '未序'}</div>
-            <div class="lx-heir-line"><b>出生</b>${escapeHtml(item.出生 || '未记')}　<b>状态</b>${escapeHtml(item.状态 || '在世')}</div>
-            ${item.备注 ? `<div class="lx-preg-note">${escapeHtml(item.备注)}</div>` : ''}
-        </div>`).join('');
-    }
     setPanel('孕事', html + '<div style="margin-top:10px;"><button type="button" class="lx-mini-btn" data-action="preg-add">+ 添加孕事</button></div>');
 }
 
@@ -4509,12 +4697,18 @@ function pregnancyTip(month) {
     return '孕 9-10 月：临盆在即，产房、稳婆、太医与名分都要提前落定。';
 }
 
+function displayPersonName(name) {
+    const n = cleanName(name);
+    if (!n) return '';
+    return isLeadName(n) ? getUserDisplayName() : n;
+}
+
 function renderHeir(heir) {
     const data = normalizeHeir(heir, 0);
     const user = data.用户;
-    const kids = data.子女.filter(item => textMatch(item.姓名, item.性别, item.身份, item.生母, item.状态, item.备注));
-    const userMatch = textMatch('{{user}}', user.受孕判定, user.状态, user.备注, ...(user.发现 || []).map(k => k.人物));
-    const hasUser = user.内射次数 || user.孕期月 || (user.状态 && user.状态 !== '未孕') || user.受孕判定 !== '未定';
+    const kids = data.子女.filter(item => textMatch(item.姓名, item.性别, item.身份, item.生母, item.亲缘, item.状态, item.备注));
+    const userMatch = textMatch('{{user}}', user.受孕判定, user.状态, user.备注, user.月事最近, user.排卵期, ...(user.发现 || []).map(k => k.人物));
+    const hasUser = user.内射次数 || user.孕期月 || (user.状态 && user.状态 !== '未孕') || user.受孕判定 !== '未定' || user.月事最近 || user.排卵期;
     if (!hasUser && !kids.length) {
         setPanel('子嗣', emptyText('尚无子嗣记录') + '<div class="lx-time-hint">开启子嗣模块后，生成一次才会开始记录 {{user}} 的孕事与子女。</div>');
         return;
@@ -4532,6 +4726,8 @@ function renderHeir(heir) {
                 <div><span>孕期</span><b>${user.孕期月 ? user.孕期月 + ' 月' : '—'}</b></div>
             </div>
             <div class="lx-heir-status">${escapeHtml(user.状态 || '未孕')}</div>
+            <div class="lx-heir-line"><b>月事</b>${escapeHtml(user.月事最近 || '未记')}${user.月事周期 ? `　周期 ${user.月事周期} 日` : ''}${user.月事持续 ? `　持续 ${user.月事持续} 日` : ''}</div>
+            <div class="lx-heir-line"><b>排卵期</b>${escapeHtml(user.排卵期 || '未记')}${user.排卵可能 ? `　${escapeHtml(user.排卵可能)}` : ''}</div>
             <div class="lx-heir-line"><b>谁知道</b>${known.length ? known.map(k => `<span class="lx-secret-chip known">${escapeHtml(k.人物)}·${escapeHtml(k.程度)}</span>`).join('') : '<span class="lx-secret-none">尚未有人察觉</span>'}</div>
             ${user.备注 ? `<div class="lx-preg-note">${escapeHtml(user.备注)}</div>` : ''}
             <div class="lx-heir-tip">${escapeHtml(pregnancyTip(user.孕期月))}</div>
@@ -4542,8 +4738,8 @@ function renderHeir(heir) {
         html += `<div class="lx-npc-group-title">子女 · ${kids.length}</div>`;
         html += kids.map(item => `<div class="lx-heir-child">
             <div class="lx-heir-child-head"><span class="lx-heir-child-name">${escapeHtml(item.姓名)}</span><span class="lx-heir-child-title">${escapeHtml(item.身份 || (item.性别 === '女' ? '皇女' : '皇子'))}</span></div>
-            <div class="lx-heir-line"><b>性别</b>${escapeHtml(item.性别)}　<b>生母</b>${escapeHtml(item.生母 || '不详')}　<b>排行</b>${item.排行 ? '第' + item.排行 : '未序'}</div>
-            <div class="lx-heir-line"><b>出生</b>${escapeHtml(item.出生 || '未记')}　<b>状态</b>${escapeHtml(item.状态 || '在世')}</div>
+            <div class="lx-heir-line"><b>性别</b>${escapeHtml(item.性别)}　<b>生母</b>${escapeHtml(displayPersonName(item.生母) || '不详')}　<b>排行</b>${item.排行 ? '第' + item.排行 : '未序'}</div>
+            <div class="lx-heir-line"><b>亲缘</b>${escapeHtml(item.亲缘 || '不详')}　<b>出生</b>${escapeHtml(item.出生 || '未记')}　<b>状态</b>${escapeHtml(item.状态 || '在世')}</div>
             ${item.备注 ? `<div class="lx-preg-note">${escapeHtml(item.备注)}</div>` : ''}
         </div>`).join('');
     } else {
@@ -4760,14 +4956,14 @@ function buildSettingsHTML() {
                 <div class="lx-radio-group">
                     ${checkRow('lx-preg-module', s.pregnancyModule, '开启孕事页签与推演')}
                 </div>
-                <div class="lx-field-hint">默认关闭。开启后多一个「孕事」页签，只记录后妃的有孕月份与状态。</div>
+                <div class="lx-field-hint">默认关闭。开启后多一个「孕事」页签，记录后妃的有孕月份、状态，以及后妃所出的子女（孕事子女）。</div>
             </div>
             <div class="lx-field">
                 <label class="lx-field-label">子嗣模块</label>
                 <div class="lx-radio-group">
                     ${checkRow('lx-heir-module', s.heirModule, '开启 {{user}} 孕事与子女记录')}
                 </div>
-                <div class="lx-field-hint">记录 {{user}} 的累计次数、受孕判定、孕期、谁知道，以及出生后的子女性别/身份/排行；默认关闭。</div>
+                <div class="lx-field-hint">记录 {{user}} 的累计次数、受孕判定、孕期、月事、排卵期、谁知道，以及出生后的子女性别/身份/亲缘/排行；默认关闭。</div>
             </div>
             <details class="lx-fold">
                 <summary>注入范围（AI 可见）</summary>
