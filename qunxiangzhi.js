@@ -1,4 +1,4 @@
-const VERSION = '0.1.1';
+const VERSION = '0.1.2';
 let userNamesCache = { time: 0, names: [] };
 const HOST_ID = 'lx-group-host';
 const LEGACY_IDS = ['lx-ball', 'lx-panel', 'lx-mask', 'lx-settings', 'lx-group-style'];
@@ -79,10 +79,10 @@ const DEFAULT_SETTINGS = {
     injectEvents: true,
     injectNpc: true,
     injectRumors: true,
-    injectLetters: true,
+    injectLetters: false,
     injectForeshadow: true,
     injectRelations: true,
-    injectTimeline: true,
+    injectTimeline: false,
     injectPregnancy: true,
     injectHeir: true,
     injectCourt: true,
@@ -142,9 +142,9 @@ const PRESET_DEFAULT = {
 
 【朝堂门阀字段】派系：派系名、领袖、成员、主张、资源、目标、敌对、进度、备注。家族：家族、家主、成员、姻亲、世仇、产业、门生、立场、备注。
 【医疗健康字段】只有正文出现伤病/中毒/脉案/用药/太医诊治时才生成；没有就空数组。字段：人物、日期、症状、诊断、方子、太医、忌口、状态、备注。
-【节庆礼仪字段】已合并进时令：节日、礼仪、主礼、地点、座次、禁忌、节目。节日必须按年月日推算，写最近的节日，不能写“未记”。
+【节庆礼仪字段】已合并进时令：节日、礼仪、主礼、地点、座次、禁忌、节目、宴席。节日必须是古代节日，按年月日推算最近的节；礼仪、主礼、地点、座次、禁忌、节目都要按节日/门阀推演，不能写“未记”；宴席写名称、主家、地点、日期、宾客、目的。
 【孕事字段】人物、孕月、状态、风险、胎象、太医、饮食、行动、预计产期、知情者、备注。
-【孕事子女字段】姓名、性别、身份、生母、亲缘、排行、出生、状态、备注。
+【孕事子女字段】后妃已有孩子就必须写，即使当前没怀孕；姓名、性别、身份、生母、亲缘、排行、出生、状态、备注。
 【子嗣输出字段】
 子嗣.用户：本回次数、受孕判定、孕期月、状态、月事最近、月事周期、月事持续、排卵期、排卵可能、发现、备注。
 子嗣.子女：姓名、性别、身份、生母、亲缘、排行、出生、状态、备注。
@@ -186,9 +186,9 @@ const PRESET_DEFAULT = {
 
 【朝堂门阀字段】派系：派系名、领袖、成员、主张、资源、目标、敌对、进度、备注。家族：家族、家主、成员、姻亲、世仇、产业、门生、立场、备注。
 【医疗健康字段】只有正文出现伤病/中毒/脉案/用药/太医诊治时才生成；没有就空数组。字段：人物、日期、症状、诊断、方子、太医、忌口、状态、备注。
-【节庆礼仪字段】已合并进时令：节日、礼仪、主礼、地点、座次、禁忌、节目。节日必须按年月日推算，写最近的节日，不能写“未记”。
+【节庆礼仪字段】已合并进时令：节日、礼仪、主礼、地点、座次、禁忌、节目、宴席。节日必须是古代节日，按年月日推算最近的节；礼仪、主礼、地点、座次、禁忌、节目都要按节日/门阀推演，不能写“未记”；宴席写名称、主家、地点、日期、宾客、目的。
 【孕事字段】人物、孕月、状态、风险、胎象、太医、饮食、行动、预计产期、知情者、备注。
-【孕事子女字段】姓名、性别、身份、生母、亲缘、排行、出生、状态、备注。
+【孕事子女字段】后妃已有孩子就必须写，即使当前没怀孕；姓名、性别、身份、生母、亲缘、排行、出生、状态、备注。
 【子嗣输出字段】
 子嗣.用户：本回次数、受孕判定、孕期月、状态、月事最近、月事周期、月事持续、排卵期、排卵可能、发现、备注。
 子嗣.子女：姓名、性别、身份、生母、亲缘、排行、出生、状态、备注。
@@ -256,9 +256,9 @@ NPC状态不设上限（只写有变化/值得续写的人）；NPC事件 1-3 �
 
 【朝堂门阀字段】派系：派系名、领袖、成员、主张、资源、目标、敌对、进度、备注。家族：家族、家主、成员、姻亲、世仇、产业、门生、立场、备注。
 【医疗健康字段】只有正文出现伤病/中毒/脉案/用药/太医诊治时才生成；没有就空数组。字段：人物、日期、症状、诊断、方子、太医、忌口、状态、备注。
-【节庆礼仪字段】已合并进时令：节日、礼仪、主礼、地点、座次、禁忌、节目。节日必须按年月日推算，写最近的节日，不能写“未记”。
+【节庆礼仪字段】已合并进时令：节日、礼仪、主礼、地点、座次、禁忌、节目、宴席。节日必须是古代节日，按年月日推算最近的节；礼仪、主礼、地点、座次、禁忌、节目都要按节日/门阀推演，不能写“未记”；宴席写名称、主家、地点、日期、宾客、目的。
 【孕事字段】人物、孕月、状态、风险、胎象、太医、饮食、行动、预计产期、知情者、备注。
-【孕事子女字段】姓名、性别、身份、生母、亲缘、排行、出生、状态、备注。
+【孕事子女字段】后妃已有孩子就必须写，即使当前没怀孕；姓名、性别、身份、生母、亲缘、排行、出生、状态、备注。
 【子嗣输出字段】
 子嗣.用户：本回次数、受孕判定、孕期月、状态、月事最近、月事周期、月事持续、排卵期、排卵可能、发现、备注。
 子嗣.子女：姓名、性别、身份、生母、亲缘、排行、出生、状态、备注。
@@ -390,6 +390,18 @@ function clamp(value, min, max) {
 function toInt(value, fallback) {
     const n = Number(value);
     return Number.isFinite(n) ? Math.round(n) : fallback;
+}
+
+function isGenericNpcName(name) {
+    const n = String(name || '').trim();
+    return !n || ['NPC', 'npc', '群像', '群像人物', '某NPC', '某npc', '无名', '未记名', '佚名'].includes(n);
+}
+
+function inventNpcName(seed) {
+    const surnames = ['沈', '谢', '崔', '裴', '陆', '顾', '萧', '温', '姜', '宋', '卫', '许'];
+    const given = ['清和', '明烛', '知微', '令仪', '景行', '子瑜', '含章', '云舒', '怀瑾', '映雪', '长宁', '文昭'];
+    const h = Math.abs(hashString(String(seed || 'npc')));
+    return surnames[h % surnames.length] + given[Math.floor(h / 7) % given.length];
 }
 
 function clone(value) {
@@ -644,6 +656,38 @@ function normalizeStruggle(item, round) {
     };
 }
 
+function normalizeBanquet(item, round) {
+    if (!isPlainObject(item)) return null;
+    const name = String(item.名称 || item.宴名 || '').trim();
+    if (!name) return null;
+    return {
+        名称: name.slice(0, 40),
+        主家: String(item.主家 || item.主办 || '').trim().slice(0, 40),
+        地点: String(item.地点 || '').trim().slice(0, 40),
+        日期: String(item.日期 || item.时间 || '').trim().slice(0, 30),
+        宾客: String(item.宾客 || '').trim().slice(0, 120),
+        目的: String(item.目的 || '').trim().slice(0, 100),
+        备注: String(item.备注 || '').trim().slice(0, 120),
+        回合: toInt(item.回合, round || 0) || 0
+    };
+}
+
+function mergeBanquets(oldList, newList, round) {
+    const map = new Map();
+    (Array.isArray(oldList) ? oldList : []).forEach(item => {
+        const b = normalizeBanquet(item, 0);
+        if (b) map.set(b.名称, b);
+    });
+    (Array.isArray(newList) ? newList : []).forEach(item => {
+        const b = normalizeBanquet(item, round);
+        if (!b) return;
+        const old = map.get(b.名称);
+        if (!old) { map.set(b.名称, b); return; }
+        ['主家', '地点', '日期', '宾客', '目的', '备注'].forEach(k => { if (b[k]) old[k] = b[k]; });
+    });
+    return Array.from(map.values());
+}
+
 function normalizeTime(raw) {
     const t = isPlainObject(raw) ? raw : {};
     return {
@@ -659,6 +703,7 @@ function normalizeTime(raw) {
         座次: String(t.座次 || '').trim().slice(0, 80),
         禁忌: String(t.禁忌 || '').trim().slice(0, 80),
         节目: String(t.节目 || '').trim().slice(0, 120),
+        宴席: (Array.isArray(t.宴席) ? t.宴席 : []).map(item => normalizeBanquet(item, 0)).filter(Boolean),
         时辰: String(t.时辰 || '').trim().slice(0, 10),
         备注: String(t.备注 || '').trim().slice(0, 120)
     };
@@ -853,12 +898,16 @@ function normalizeData(raw) {
     const npc = {};
     if (isPlainObject(out.NPC状态)) {
         Object.entries(out.NPC状态).forEach(([name, info]) => {
-            const n = cleanName(name);
+            let n = cleanName(name);
             if (isBlacklisted(n) || !isPlainObject(info)) return;
             const patch = normalizeNpcPatch(info);
             if (Object.keys(patch).length) {
                 patch.更新回合 = Math.max(0, toInt(info.更新回合, 0));
-                npc[n] = patch;
+                if (isGenericNpcName(n)) n = inventNpcName(n + JSON.stringify(patch));
+                let candidate = n;
+                let suffix = 0;
+                while (npc[candidate]) candidate = n + ['', '·二', '·三', '·四'][++suffix] || n + '·' + (suffix + 1);
+                npc[candidate] = patch;
             }
         });
     }
@@ -868,6 +917,11 @@ function normalizeData(raw) {
         out[key] = (Array.isArray(out[key]) ? out[key] : [])
             .map(normalizeEvent)
             .filter(e => e.事件名 || e.内容);
+        if (key === 'NPC事件') {
+            out[key].forEach(e => {
+                if (isGenericNpcName(e.角色)) e.角色 = inventNpcName((e.事件名 || '') + (e.内容 || ''));
+            });
+        }
     });
 
     out.流言 = (Array.isArray(out.流言) ? out.流言 : [])
@@ -970,11 +1024,11 @@ function normalizeApiProfiles(raw) {
 function normalizeSettings(raw) {
     const out = Object.assign({}, DEFAULT_SETTINGS, isPlainObject(raw) ? raw : {});
     const previousSettingsVersion = toInt(out.version, 0);
-    out.version = 3;
-    if (previousSettingsVersion < 3) {
-        // 老设置里 injectLetters/injectTimeline 默认是 false，升级后先打开一次。
-        out.injectLetters = true;
-        out.injectTimeline = true;
+    out.version = 4;
+    if (previousSettingsVersion < 4) {
+        // 默认不注入；旧设置也不要强行打开。
+        out.injectLetters = false;
+        out.injectTimeline = false;
     }
     out.enabled = out.enabled !== false;
     out.mode = out.mode === 'main' ? 'main' : 'sub';
@@ -1479,6 +1533,7 @@ function mergeTime(oldTime, freshTime) {
         if (value !== '' && value !== 0 && value !== null && value !== undefined) out[key] = value;
     });
     if (fresh.年 && fresh.年 !== old.年) out.年 = fresh.年;
+    out.宴席 = mergeBanquets(old.宴席, fresh.宴席);
     return out;
 }
 
@@ -1950,6 +2005,7 @@ function mergeGroupData(oldData, fresh) {
         if (item.来源 && !['未记名', '手动', 'NPC', '群像', '剧情'].includes(item.来源)) return;
         const hit = knownNames.find(name => name.length >= 2 && String(item.内容 || '').includes(name));
         if (hit) item.来源 = hit;
+        else item.来源 = inventNpcName(item.内容 || '伏笔');
     });
     out.孕事 = mergePregnancies(out.孕事, fresh.孕事, round);
     out.孕事子女 = mergePregnancyChildren(out.孕事子女, fresh.孕事子女, round);
@@ -2164,7 +2220,8 @@ function buildExtraModulesPrompt() {
 - 流言（0-2 条）：除了内容，还要写来源人物、传播链（谁传给谁、版本变成什么）、可信度（真/半真/假/未知）。传播链 2-4 人即可。
 - 孕事：只记后妃/其他 NPC 的有孕月份与状态；{{user}} 的孕事写在“子嗣.用户”里，不要混进孕事。后妃已经生产、世界书里已有孩子的，必须写进“孕事子女”；生母写后妃名，亲缘按世界书写（亲生/养子/过继/庶出/嫡出/不详），不要默认亲生。
 - 伏笔：来源必须写具体姓名或具体事件名，例如“淑妃”“太学暗账”；不要写“NPC”“群像”“剧情”这种分类。来源确实不明写“未记名”。
-- 时令（含节庆礼仪）：只有正文出现明确日期、节气、节日、时辰、礼仪时才更新。写年号、年、月、日、节气、节日、礼仪、主礼、地点、座次、禁忌、节目、时辰、备注；节日必须按日期推算最近的节日，不能写“未记”；没有日期就留空对象。节庆礼仪合并在这里，不另开模块。
+- 时令（含节庆礼仪）：只有正文出现明确日期、节气、节日、时辰、礼仪时才更新。写年号、年、月、日、节气、节日、礼仪、主礼、地点、座次、禁忌、节目、宴席、时辰、备注；节日必须是古代节日（元日/上元/上巳/寒食/端阳/七夕/中元/中秋/重阳/腊八/祭灶/除夕等），按日期推算最近的节日；礼仪、主礼、地点、座次、禁忌、节目必须推演，不能写“未记”；没有日期就留空对象。节庆礼仪合并在这里，不另开模块。
+- 宴席：写名称（如“崔氏上元宴”）、主家、地点、日期、宾客、目的、备注。正文没有明确宴席时，可依据时令和已知门阀/宫廷制造一场古代宴席，不要写现代宴会。
 - 斗争（0-2 条）：宫斗或政斗。只在有明确动机、利益冲突、行动条件时记录；不要每回硬造。写类型（宫斗/政斗）、事件名、发起者、目标、手段、烈度（低/中/高）、阶段（策划/执行/调查/反制/收场）、证据、知情者、进度、结果。结果开放，不保证成功；不替{{user}}决定中计、受伤、失宠或站队；信息有限，不知道的人不要写成知道。
 - 朝堂门阀：分「派系」和「家族」两段。派系写派系名、领袖、成员、主张、资源、目标、敌对、进度；家族写家族、家主、成员、姻亲、世仇、产业、门生、立场。没有变化可省略，但已有派系/家族被提到时要更新。
 - 医疗健康（**有才生成**）：只有正文出现伤病、中毒、脉案、用药、太医诊治、孕产异常时才写；没有就留空数组，不要每回硬编。写人物、日期、症状、诊断、方子、太医、忌口、状态、备注。普通心情、普通请安不算医案；孕事仍走孕事页。
@@ -2187,7 +2244,7 @@ function buildExtraModulesPrompt() {
 "奏折":[{"标题":"","上奏人":"","衙门":"","事由":"","主张":"","反对":"","状态":"待议","结果":"","进度":0}],
 "秘辛":[{"内容":"","涉及":"","知情者":[{"人物":"","程度":"部分"}],"不知情者":[""],"证据":"","来源":""}],
 "流言":[{"内容":"","来源人物":"","传播链":[{"人物":"","版本":""}],"可信度":"未知","伏笔":false}],
-"时令":{"年号":"","年":0,"月":0,"日":0,"节气":"","节日":"","礼仪":"","主礼":"","地点":"","座次":"","禁忌":"","节目":"","时辰":"","备注":""},
+"时令":{"年号":"","年":0,"月":0,"日":0,"节气":"","节日":"","礼仪":"","主礼":"","地点":"","座次":"","禁忌":"","节目":"","宴席":[{"名称":"","主家":"","地点":"","日期":"","宾客":"","目的":"","备注":""}],"时辰":"","备注":""},
 "斗争":[{"类型":"宫斗","事件名":"","发起者":"","目标":"","手段":"","烈度":"低","阶段":"策划","证据":"","知情者":[{"人物":"","程度":"部分"}],"进度":0,"结果":""}],
 "朝堂门阀":{"派系":[{"派系名":"","领袖":"","成员":[],"主张":"","资源":"","目标":"","敌对":[],"进度":0,"备注":""}],"家族":[{"家族":"","家主":"","成员":[],"姻亲":"","世仇":"","产业":"","门生":[],"立场":"","备注":""}]},
 "医疗健康":[{"人物":"","日期":"","症状":"","诊断":"","方子":"","太医":"","忌口":"","状态":"在治","备注":""}],
@@ -2255,7 +2312,7 @@ function buildModuleHandbook() {
 - 斗争：类型、发起者、目标、手段、烈度、阶段、证据、进度。
 - 朝堂门阀：派系（领袖/成员/主张/资源/目标/敌对/进度）、家族（家主/成员/姻亲/世仇/产业/门生/立场）。
 - 医疗健康（有才写）：伤病/中毒/脉案/用药/太医诊治才生成；没有就空数组。人物、日期、症状、诊断、方子、太医、忌口、状态；孕事仍走孕事页。
-- 时令/节庆礼仪：日期、节气、节日、礼仪、主礼、地点、座次、禁忌、节目、时辰；节日按日期推算最近的节，不能写“未记”。
+- 时令/节庆礼仪：日期、节气、节日、礼仪、主礼、地点、座次、禁忌、节目、宴席、时辰；节日用古代节日并按日期推算最近的节；礼仪/主礼/地点/座次/禁忌/节目必须推演，不能写“未记”；宴席写名称/主家/地点/日期/宾客/目的，可用已知门阀制造一场古代宴席。
 - 书信：称呼、落款、言外之意；时令：日期、节气、节日、时辰。
 - 关系：甲对乙的方向；伏笔：未回收/已回收。
 - 孕事：只写其他后妃的孕月、状态、风险；已出生子女写“孕事子女”。
@@ -2400,6 +2457,7 @@ function buildPregnancyPrompt() {
   · 备注：其他线索。
 - 已生产、小产、流产的孕事要写清楚状态和胎象，程序会自动归入“已结束”。
 - 后妃生产后，子女写到“孕事子女”：姓名、性别、身份（太子/太女/王爷/公主/皇子/皇女）、生母、亲缘（按世界书写亲生/养子/过继/庶出/嫡出/不详）、排行、出生、状态；不要写进“子嗣”。
+- **只要后妃已经有孩子，即使她当前没有怀孕，也必须写进“孕事子女”**；世界书或正文提到过一次就要补录，不能因为当前孕事为空就整块省略。没有孩子的后妃才不写。
 - 没有孕事就输出空数组，不要编造。
 格式：
 "孕事": [{"人物":"", "孕月":0, "状态":"", "风险":"", "胎象":"", "太医":"", "饮食":"", "行动":"", "预计产期":"", "知情者":[{"人物":"","程度":"部分"}], "备注":""}],
@@ -4376,6 +4434,11 @@ const CSS = `
 .lx-time-card, .lx-festival-card { padding: 9px; border: 1px solid var(--lx-border); background: var(--lx-card-bg); }
 .lx-time-card-title { margin-bottom: 6px; color: var(--lx-gold); font-size: 10px; letter-spacing: 3px; }
 .lx-festival-card { background: linear-gradient(180deg, var(--lx-card-bg), transparent); }
+.lx-banquet-card { padding: 9px; border: 1px solid var(--lx-border); background: var(--lx-card-bg); }
+.lx-banquet-item { margin-top: 6px; padding: 7px 8px; border: 1px solid var(--lx-border); background: var(--lx-event-bg); }
+.lx-banquet-name { color: var(--lx-gold); font-size: 12px; letter-spacing: 1px; }
+.lx-banquet-line { margin-top: 3px; color: var(--lx-text2); font-size: 10px; line-height: 1.6; }
+.lx-banquet-line b { color: var(--lx-gold); font-weight: 400; margin-right: 4px; }
 .lx-time-big { padding: 10px 12px; border: 1px solid var(--lx-border); background: var(--lx-event-bg); color: var(--lx-gold); font-size: 14px; letter-spacing: 2px; text-align: center; }
 .lx-time-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 8px; }
 .lx-time-cell { padding: 8px 10px; border: 1px solid var(--lx-border); background: var(--lx-card-bg); }
@@ -5146,9 +5209,10 @@ function formatTime(data) {
 }
 
 const FESTIVALS = [
-    [1, 1, '春节'], [1, 15, '元宵'], [2, 2, '龙抬头'], [3, 3, '上巳'],
-    [5, 5, '端午'], [7, 7, '七夕'], [7, 15, '中元'], [8, 15, '中秋'],
-    [9, 9, '重阳'], [12, 8, '腊八'], [12, 23, '小年'], [12, 30, '除夕']
+    [1, 1, '元日'], [1, 7, '人日'], [1, 15, '上元'], [2, 2, '龙抬头'],
+    [3, 3, '上巳'], [4, 4, '寒食'], [5, 5, '端阳'], [7, 7, '七夕'],
+    [7, 15, '中元'], [8, 15, '中秋'], [9, 9, '重阳'], [12, 8, '腊八'],
+    [12, 23, '祭灶'], [12, 30, '除夕']
 ];
 
 function deriveFestival(month, day) {
@@ -5160,6 +5224,60 @@ function deriveFestival(month, day) {
     const sorted = FESTIVALS.slice().sort((a, b) => a[0] * 31 + a[1] - (b[0] * 31 + b[1]));
     const next = sorted.find(([fm, fd]) => fm * 31 + fd > m * 31 + d) || sorted[0];
     return { name: next[2], date: `${next[0]}月${next[1]}日`, inferred: true };
+}
+
+const RITUAL_MAP = {
+    元日: { 礼仪: '祭祖、朝贺、赐宴', 节目: '大傩、乐舞、百戏', 禁忌: '忌说不吉、忌打碎器物' },
+    人日: { 礼仪: '剪彩、登高、赐宴', 节目: '剪彩胜、赋诗', 禁忌: '忌刑罚、忌远行' },
+    上元: { 礼仪: '张灯、观灯、赐宴', 节目: '灯舞、百戏、猜谜', 禁忌: '忌熄灯、忌口角' },
+    龙抬头: { 礼仪: '祭龙、引龙、食龙须面', 节目: '舞龙、社火', 禁忌: '忌动针线' },
+    上巳: { 礼仪: '祓禊、临水、曲水流觞', 节目: '水戏、赋诗', 禁忌: '忌下水失仪' },
+    寒食: { 礼仪: '禁火、祭扫、冷食', 节目: '踏青、秋千', 禁忌: '忌生火、忌荤食' },
+    端阳: { 礼仪: '祭屈原、系五彩、赐扇', 节目: '竞渡、食粽、斗草', 禁忌: '忌说“翻”、忌送药' },
+    七夕: { 礼仪: '乞巧、拜织女、陈瓜果', 节目: '穿针、投针、观星', 禁忌: '忌不敬牛女' },
+    中元: { 礼仪: '祭祖、放河灯、设醮', 节目: '河灯、法事', 禁忌: '忌夜行、忌拍肩' },
+    中秋: { 礼仪: '拜月、赏桂、赐月饼', 节目: '赏月、听曲、猜谜', 禁忌: '忌指月、忌失约' },
+    重阳: { 礼仪: '登高、赏菊、赐糕', 节目: '登高、插茱萸、赋诗', 禁忌: '忌说“重”不吉' },
+    腊八: { 礼仪: '祭祖、熬粥、施粥', 节目: '施粥、祭灶前奏', 禁忌: '忌浪费、忌争吵' },
+    祭灶: { 礼仪: '祭灶、扫尘、备年', 节目: '祭灶、写春联', 禁忌: '忌说灶王坏话' },
+    除夕: { 礼仪: '守岁、祭祖、赐宴', 节目: '守岁、爆竹、宴饮', 禁忌: '忌倒垃圾、忌说不吉' },
+    花朝节: { 礼仪: '赏花、祭花神、赐宴', 节目: '赏花、扑蝶、赋诗', 禁忌: '忌折花枝、忌失仪' }
+};
+
+function inferRitual(data, festival, t, banquet) {
+    const name = festival.name || '节庆';
+    const map = RITUAL_MAP[name] || { 礼仪: '祭祖、宴饮、受贺', 节目: '乐舞、宴饮、投壶', 禁忌: '忌失礼、忌喧哗' };
+    const host = (banquet && banquet.主家) || '宫中';
+    const inPalace = host === '宫中';
+    return {
+        礼仪: t.礼仪 || map.礼仪,
+        主礼: t.主礼 || (inPalace ? (typeof CHARACTER_NAME === 'string' ? CHARACTER_NAME : '帝后') : `${host}家主`),
+        地点: t.地点 || (banquet && banquet.地点) || (inPalace ? '承极殿' : `${host}正堂`),
+        座次: t.座次 || (inPalace ? '按位份入席，宗亲居前' : '按辈分入席，家主居中'),
+        禁忌: t.禁忌 || map.禁忌,
+        节目: t.节目 || map.节目
+    };
+}
+
+function inferBanquets(data, festival) {
+    const clans = (data && data.朝堂门阀 && data.朝堂门阀.家族) || [];
+    const factions = (data && data.朝堂门阀 && data.朝堂门阀.派系) || [];
+    const host = (clans[0] && clans[0].家族) || (factions[0] && factions[0].领袖) || '宫中';
+    const location = clans[0] ? `${host}府` : '宫中';
+    const guests = clans[0] ? (clans[0].成员 || []).slice(0, 5).join('、') || '宗亲、近臣' : '宗亲、近臣';
+    const saved = (data && data.时令 && data.时令.宴席) || [];
+    const fill = b => ({
+        ...b,
+        主家: b.主家 || host,
+        地点: b.地点 || location,
+        日期: b.日期 || festival.date || '本月',
+        宾客: b.宾客 || guests,
+        目的: b.目的 || '节庆宴饮，联络人情',
+        备注: b.备注 || '由时令与门阀推演'
+    });
+    if (Array.isArray(saved) && saved.length) return saved.map(fill);
+    const name = /宴$/.test(festival.name) ? `${host}${festival.name}` : `${host}${festival.name}宴`;
+    return [fill({ 名称: name, 主家: host, 地点: location, 日期: festival.date || '本月', 宾客: guests, 目的: '节庆宴饮，联络人情', 备注: '由时令与门阀推演' })];
 }
 
 function renderCalendar(data) {
@@ -5181,16 +5299,28 @@ function renderCalendar(data) {
         ['时辰', t.时辰 || '未记'],
         ['备注', t.备注 || '——']
     ];
+    const festivalView = Object.assign({}, festival, { name: festivalName });
+    const banquets = inferBanquets(data, festivalView);
+    const ritual = inferRitual(data, festivalView, t, banquets[0]);
     const festivalCells = [
         ['节日', festivalName + (festival.inferred && !t.节日 ? `（推算 · ${festival.date}）` : '')],
-        ['礼仪', t.礼仪 || '未记'],
-        ['主礼', t.主礼 || '未记'],
-        ['地点', t.地点 || '未记'],
-        ['座次', t.座次 || '未记'],
-        ['禁忌', t.禁忌 || '未记'],
-        ['节目', t.节目 || '未记']
+        ['礼仪', ritual.礼仪],
+        ['主礼', ritual.主礼],
+        ['地点', ritual.地点],
+        ['座次', ritual.座次],
+        ['禁忌', ritual.禁忌],
+        ['节目', ritual.节目]
     ];
     const cell = c => `<div class="lx-time-cell"><span>${escapeHtml(c[0])}</span><b>${escapeHtml(String(c[1]))}</b></div>`;
+    const banquetHtml = banquets.length ? `<div class="lx-banquet-card">
+        <div class="lx-time-card-title">宴席</div>
+        ${banquets.map(b => `<div class="lx-banquet-item">
+            <div class="lx-banquet-name">${escapeHtml(b.名称)}</div>
+            <div class="lx-banquet-line"><b>主家</b>${escapeHtml(b.主家 || '未记')}　<b>地点</b>${escapeHtml(b.地点 || '未记')}</div>
+            <div class="lx-banquet-line"><b>日期</b>${escapeHtml(b.日期 || '待定')}　<b>宾客</b>${escapeHtml(b.宾客 || '未记')}</div>
+            ${b.目的 ? `<div class="lx-banquet-line"><b>目的</b>${escapeHtml(b.目的)}</div>` : ''}
+        </div>`).join('')}
+    </div>` : '';
     const html = `<div class="lx-calendar-stack">
         <div class="lx-time-card">
             <div class="lx-time-card-title">时令</div>
@@ -5201,6 +5331,7 @@ function renderCalendar(data) {
             <div class="lx-time-card-title">节庆 · 礼仪</div>
             <div class="lx-time-grid">${festivalCells.map(cell).join('')}</div>
         </div>
+        ${banquetHtml}
     </div>`;
     setPanel('时令', html);
 }
@@ -6726,7 +6857,6 @@ function openRerollDialog() {
         close();
         rerollGroup(instruction);
     });
-    setTimeout(() => input.focus(), 50);
 }
 
 /* ------------------------------------------------------------------ */
