@@ -1,4 +1,4 @@
-const VERSION = '0.1.6';
+const VERSION = '0.1.7';
 let userNamesCache = { time: 0, names: [] };
 const HOST_ID = 'lx-group-host';
 const LEGACY_IDS = ['lx-ball', 'lx-panel', 'lx-mask', 'lx-settings', 'lx-group-style'];
@@ -67,7 +67,7 @@ const DEFAULT_SETTINGS = {
     enabled: true,
     mode: 'sub',
     trigger: 'auto',
-    initialFill: 'auto',
+    initialFill: 'manual',
     worldbookMode: 'follow',
     worldbookEntries: {},
     presetName: '正常',
@@ -140,7 +140,7 @@ const PRESET_DEFAULT = {
 - 时令：只按正文日期更新，写年/月/日/节气/时辰。
 - 孕事：模块关闭时不输出；开启时写后妃的孕月、状态、风险。
 - 孕事子女：后妃已生产的孩子；写姓名、性别、身份、生母、亲缘、排行。
-- 子嗣：只写{{user}}。用户写本回次数、受孕判定、孕期月、状态、月事最近、月事周期、月事持续、排卵期、排卵可能、发现、备注；子女写姓名、性别、身份、生母、亲缘、排行、出生、状态。月事和排卵期按世界书/正文/太医记录，没写就写“待定”，不要留空；亲缘按世界书写，不默认亲生。
+- 子嗣：只写{{user}}。用户写本回次数、受孕判定、孕期月、状态、月事最近、月事推演、月事周期、月事持续、排卵期、排卵可能、排卵状态、发现、备注；子女写姓名、性别、身份、生母、亲缘、排行、出生、状态。月事和排卵期按世界书/正文/太医记录，没写就写“待定”，不要留空；亲缘按世界书写，不默认亲生。
 
 【朝堂门阀字段】派系：派系名、领袖、成员、主张、资源、目标、敌对、进度、备注。家族：家族、家主、成员、姻亲、世仇、产业、门生、立场、备注。
 【医疗健康字段】只有正文出现伤病/中毒/脉案/用药/太医诊治时才生成；没有就空数组。字段：人物、日期、症状、诊断、方子、太医、忌口、状态、备注。
@@ -148,7 +148,7 @@ const PRESET_DEFAULT = {
 【孕事字段】人物、孕月、状态、风险、胎象、太医、饮食、行动、预计产期、知情者、备注。
 【孕事子女字段】后妃已有孩子就必须写，即使当前没怀孕；姓名、性别、身份、生母、亲缘、排行、年龄、出生、状态、备注。
 【子嗣输出字段】
-子嗣.用户：本回次数、受孕判定、孕期月、状态、月事最近、月事周期、月事持续、排卵期、排卵可能、发现、备注。
+子嗣.用户：本回次数、受孕判定、孕期月、状态、月事最近、月事推演、月事周期、月事持续、排卵期、排卵可能、排卵状态、发现、备注。
 子嗣.子女：姓名、性别、身份、生母、亲缘、排行、年龄、出生、状态、备注。
 
 【输出】
@@ -184,7 +184,7 @@ const PRESET_DEFAULT = {
 - 时令：正文出现明确日期才更新；写年号/年/月/日/节气/节日/时辰。
 - 孕事：开启时才写；写其他后妃的孕月、状态、风险，不写{{user}}。
 - 孕事子女：后妃已生产的孩子；写姓名、性别、身份、生母、亲缘、排行、出生、状态；不写进子嗣。
-- 子嗣：只写{{user}}。用户字段：本回次数、受孕判定、孕期月、状态、月事最近、月事周期、月事持续、排卵期、排卵可能、发现、备注。子女：姓名、性别、身份、生母、亲缘、排行、出生、状态。月事/排卵期按世界书、正文、太医记录；没有就写“待定”，不能留空；亲缘按世界书，不默认亲生。
+- 子嗣：只写{{user}}。用户字段：本回次数、受孕判定、孕期月、状态、月事最近、月事推演、月事周期、月事持续、排卵期、排卵可能、排卵状态、发现、备注。子女：姓名、性别、身份、生母、亲缘、排行、出生、状态。月事/排卵期按世界书、正文、太医记录；没有就写“待定”，不能留空；亲缘按世界书，不默认亲生。
 
 【朝堂门阀字段】派系：派系名、领袖、成员、主张、资源、目标、敌对、进度、备注。家族：家族、家主、成员、姻亲、世仇、产业、门生、立场、备注。
 【医疗健康字段】只有正文出现伤病/中毒/脉案/用药/太医诊治时才生成；没有就空数组。字段：人物、日期、症状、诊断、方子、太医、忌口、状态、备注。
@@ -192,7 +192,7 @@ const PRESET_DEFAULT = {
 【孕事字段】人物、孕月、状态、风险、胎象、太医、饮食、行动、预计产期、知情者、备注。
 【孕事子女字段】后妃已有孩子就必须写，即使当前没怀孕；姓名、性别、身份、生母、亲缘、排行、年龄、出生、状态、备注。
 【子嗣输出字段】
-子嗣.用户：本回次数、受孕判定、孕期月、状态、月事最近、月事周期、月事持续、排卵期、排卵可能、发现、备注。
+子嗣.用户：本回次数、受孕判定、孕期月、状态、月事最近、月事推演、月事周期、月事持续、排卵期、排卵可能、排卵状态、发现、备注。
 子嗣.子女：姓名、性别、身份、生母、亲缘、排行、年龄、出生、状态、备注。
 
 【字段字典】
@@ -254,7 +254,7 @@ NPC状态不设上限（只写有变化/值得续写的人）；NPC事件 1-3 �
 - 时令：只按正文明确日期更新；写年号/年/月/日/节气/节日/时辰/备注；不要自己推季节。
 - 孕事：开启时才写；写其他后妃的孕月、状态、风险、太医/宫人反应；{{user}}的孕事不写这里。
 - 孕事子女：后妃已生产的孩子；写姓名、性别、身份、生母、亲缘（按世界书）、排行、出生、状态；不写进子嗣。
-- 子嗣：只写{{user}}。用户字段：本回次数（只写新增）、受孕判定、孕期月、状态、月事最近、月事周期、月事持续、排卵期、排卵可能、发现、备注；子女字段：姓名、性别、身份、生母、亲缘、排行、年龄、出生、状态、备注。月事/排卵期按世界书/正文/太医记录详细写，没有就写“待定”，不能留空；亲缘按世界书写亲生/养子/过继/庶出/嫡出/不详，不默认亲生。
+- 子嗣：只写{{user}}。用户字段：本回次数（只写新增）、受孕判定、孕期月、状态、月事最近、月事推演、月事周期、月事持续、排卵期、排卵可能、排卵状态、发现、备注；子女字段：姓名、性别、身份、生母、亲缘、排行、年龄、出生、状态、备注。月事/排卵期按世界书/正文/太医记录详细写，没有就写“待定”，不能留空；亲缘按世界书写亲生/养子/过继/庶出/嫡出/不详，不默认亲生。
 
 【朝堂门阀字段】派系：派系名、领袖、成员、主张、资源、目标、敌对、进度、备注。家族：家族、家主、成员、姻亲、世仇、产业、门生、立场、备注。
 【医疗健康字段】只有正文出现伤病/中毒/脉案/用药/太医诊治时才生成；没有就空数组。字段：人物、日期、症状、诊断、方子、太医、忌口、状态、备注。
@@ -262,7 +262,7 @@ NPC状态不设上限（只写有变化/值得续写的人）；NPC事件 1-3 �
 【孕事字段】人物、孕月、状态、风险、胎象、太医、饮食、行动、预计产期、知情者、备注。
 【孕事子女字段】后妃已有孩子就必须写，即使当前没怀孕；姓名、性别、身份、生母、亲缘、排行、年龄、出生、状态、备注。
 【子嗣输出字段】
-子嗣.用户：本回次数、受孕判定、孕期月、状态、月事最近、月事周期、月事持续、排卵期、排卵可能、发现、备注。
+子嗣.用户：本回次数、受孕判定、孕期月、状态、月事最近、月事推演、月事周期、月事持续、排卵期、排卵可能、排卵状态、发现、备注。
 子嗣.子女：姓名、性别、身份、生母、亲缘、排行、年龄、出生、状态、备注。
 
 【字段字典】
@@ -714,8 +714,8 @@ function mergeBanquets(oldList, newList, round) {
         const b = normalizeBanquet(item, round);
         if (!b) return;
         const old = map.get(b.名称);
-        if (!old) { map.set(b.名称, b); return; }
-        ['主家', '地点', '日期', '宾客', '目的', '备注'].forEach(k => { if (b[k]) old[k] = b[k]; });
+        // 宴席只新增，不覆盖已生成的宴席。
+        if (!old) map.set(b.名称, b);
     });
     return Array.from(map.values());
 }
@@ -1074,7 +1074,7 @@ function normalizeSettings(raw) {
     out.enabled = out.enabled !== false;
     out.mode = out.mode === 'main' ? 'main' : 'sub';
     out.trigger = out.trigger === 'manual' ? 'manual' : 'auto';
-    out.initialFill = out.initialFill === 'manual' ? 'manual' : 'auto';
+    out.initialFill = out.initialFill === 'auto' ? 'auto' : 'manual';
     out.worldbookMode = ['follow', 'on', 'off'].includes(out.worldbookMode) ? out.worldbookMode : 'follow';
     out.worldbookEntries = isPlainObject(out.worldbookEntries) ? out.worldbookEntries : {};
     out.presetName = String(out.presetName || '正常');
@@ -1788,11 +1788,13 @@ function normalizeHeirUser(raw, round) {
         状态: status || '未孕',
         月事最近: String((isPlainObject(user.月事) ? user.月事.最近 : user.月事最近) || '').trim().slice(0, 40),
         月事自定义: String(user.月事自定义 || '').trim().slice(0, 20),
+        月事推演: String(user.月事推演 || user.月事最近 || '').trim().slice(0, 40),
         月事来源: String(user.月事来源 || '推演').trim().slice(0, 10),
         月事周期: clamp(toInt((isPlainObject(user.月事) ? user.月事.周期 : user.月事周期), 0), 0, 60),
         月事持续: clamp(toInt((isPlainObject(user.月事) ? user.月事.持续 : user.月事持续), 0), 0, 15),
         排卵期: String((isPlainObject(user.排卵期) ? user.排卵期.日期 : user.排卵期) || '').trim().slice(0, 60),
         排卵可能: String((isPlainObject(user.排卵期) ? user.排卵期.可能 : user.排卵可能) || '').trim().slice(0, 20),
+        排卵状态: String(user.排卵状态 || '').trim().slice(0, 10),
         发现: normalizeKnowers(user.发现 || user.知情者 || []),
         备注: String(user.备注 || '').trim().slice(0, 300),
         回合: toInt(user.回合, round || 0) || 0
@@ -1848,7 +1850,7 @@ function deriveMenstrualCycle(heir, calendar) {
     const cur = calendar || {};
     const curMonth = toInt(cur.月, 0);
     const curDay = toInt(cur.日, 0);
-    let last = parseMonthDay(user.月事自定义 || user.月事最近);
+    let last = parseMonthDay(user.月事自定义 || user.月事推演 || user.月事最近);
     if (!last && curMonth && curDay) {
         last = { month: curMonth, day: curDay };
         if (!user.月事最近) user.月事最近 = `${curMonth}月${curDay}日`;
@@ -1857,6 +1859,8 @@ function deriveMenstrualCycle(heir, calendar) {
     if (user.月事自定义) {
         user.月事来源 = '手动';
         user.月事最近 = user.月事自定义;
+    } else if (!user.月事最近 && user.月事推演) {
+        user.月事最近 = user.月事推演;
     }
     user.月事最近 = user.月事最近 || '待定';
     user.月事周期 = user.月事周期 || 28;
@@ -1864,6 +1868,7 @@ function deriveMenstrualCycle(heir, calendar) {
     if (!last || !curMonth || !curDay) {
         user.排卵期 = user.排卵期 || '待定';
         user.排卵可能 = user.排卵可能 || '未知';
+        user.排卵状态 = user.排卵状态 || '待推';
         return data;
     }
     const cycle = clamp(toInt(user.月事周期, 28) || 28, 20, 45);
@@ -1878,6 +1883,7 @@ function deriveMenstrualCycle(heir, calendar) {
     const ovEnd = Math.min(cycle, cycle - 10);
     user.排卵期 = `周期第${ovStart}-${ovEnd}天`;
     user.排卵可能 = day >= ovStart && day <= ovEnd ? '高' : (day <= 5 ? '低' : '中');
+    user.排卵状态 = day >= ovStart && day <= ovEnd ? '在排卵期' : '不在排卵期';
     return data;
 }
 
@@ -1890,13 +1896,10 @@ function mergeCourt(oldCourt, freshCourt, round) {
         newList.forEach(item => {
             const key = item[keyName];
             const prev = map.get(key);
-            if (!prev) { item.回合 = item.回合 || round; map.set(key, item); return; }
-            ['领袖', '主张', '资源', '目标', '立场', '备注'].forEach(k => { if (item[k]) prev[k] = item[k]; });
-            prev.成员 = Array.from(new Set([...(prev.成员 || []), ...(item.成员 || [])]));
-            prev.敌对 = Array.from(new Set([...(prev.敌对 || []), ...(item.敌对 || [])]));
-            prev.门生 = Array.from(new Set([...(prev.门生 || []), ...(item.门生 || [])]));
-            ['姻亲', '世仇', '产业'].forEach(k => { if (item[k]) prev[k] = item[k]; });
-            prev.进度 = Math.max(prev.进度 || 0, item.进度 || 0);
+            // 朝堂门阀只新增，不覆盖已有派系/家族。
+            if (prev) return;
+            item.回合 = item.回合 || round;
+            map.set(key, item);
         });
         return Array.from(map.values());
     };
@@ -1962,6 +1965,9 @@ function mergeHeir(oldHeir, freshHeir, round) {
         user.月事来源 = '手动';
     } else if (fresh.用户.月事来源) {
         user.月事来源 = fresh.用户.月事来源;
+    }
+    if (fresh.用户.月事最近 && !fresh.用户.月事自定义) {
+        user.月事推演 = fresh.用户.月事最近;
     }
     if (fresh.用户.月事周期) user.月事周期 = fresh.用户.月事周期;
     if (fresh.用户.月事持续) user.月事持续 = fresh.用户.月事持续;
@@ -2322,7 +2328,7 @@ function buildExtraModulesPrompt() {
 "朝堂门阀":{"派系":[{"派系名":"","领袖":"","成员":[],"主张":"","资源":"","目标":"","敌对":[],"进度":0,"备注":""}],"家族":[{"家族":"","家主":"","成员":[],"姻亲":"","世仇":"","产业":"","门生":[],"立场":"","备注":""}]},
 "医疗健康":[{"人物":"","日期":"","症状":"","诊断":"","方子":"","太医":"","忌口":"","状态":"在治","备注":""}],
 "孕事子女":[{"姓名":"","性别":"男/女","身份":"","生母":"","亲缘":"不详","排行":1,"年龄":0,"出生":"","状态":"在世","备注":""}],
-"子嗣":{"用户":{"本回次数":0,"受孕判定":"未定","孕期月":0,"状态":"未孕","月事最近":"","月事自定义":"","月事来源":"推演","月事周期":28,"月事持续":5,"排卵期":"","排卵可能":"","发现":[{"人物":"","程度":""}],"备注":""},"子女":[{"姓名":"","性别":"男","身份":"皇子","生母":"","亲缘":"不详","排行":1,"年龄":0,"出生":"","状态":"在世","备注":""}]}
+"子嗣":{"用户":{"本回次数":0,"受孕判定":"未定","孕期月":0,"状态":"未孕","月事最近":"","月事推演":"","月事自定义":"","月事来源":"推演","月事周期":28,"月事持续":5,"排卵期":"","排卵可能":"","排卵状态":"","发现":[{"人物":"","程度":""}],"备注":""},"子女":[{"姓名":"","性别":"男","身份":"皇子","生母":"","亲缘":"不详","排行":1,"年龄":0,"出生":"","状态":"在世","备注":""}]}
 ${off.length ? '【本回关闭】' + off.join('、') + ' 对应字段留空，不要输出。' : ''}`;
 }
 
@@ -2336,7 +2342,7 @@ function buildEnabledModulesPrompt() {
     const medicalNote = s.medicalModule
         ? '\n医疗健康是条件模块：只有正文出现伤病、中毒、脉案、用药、太医诊治时才写；没有就留空数组，不要硬编。'
         : '';
-    return `\n\n【命名硬性】所有人名必须写全名（姓+名），禁止只写姓氏、封号、职位、NPC、未记名；姓名只写姓名，位份/职位写进“身份”字段，不要写成“姓名·职位”或“姓氏+职位”；李承璟和{{user}}用原名。\n【禁止空话】有要求的字段不能写“无”“未记”“不详”，必须根据世界书、正文和时间线推演具体内容；实在没有信息就写合理推测，不要省略整块。\n【本回必须输出】${on.join('、')}。对应字段即使没有变化也必须出现；没有内容就输出空数组/当前状态，不要整块省略。${medicalNote}\n`;
+    return `\n\n【范围】NPC事件只写角色个人线，不写国家事件、邻国事件、边境/外交/朝议；这些放各自模块。\n【只增有用】伏笔、秘辛、流言、事件：先更新已有条目，只有真正的新线索才新增；不要每回堆新条目，已回收/已结束的不要重复。\n【命名硬性】所有人名必须写全名（姓+名），禁止只写姓氏、封号、职位、NPC、未记名；姓名只写姓名，位份/职位写进“身份”字段，不要写成“姓名·职位”或“姓氏+职位”；李承璟和{{user}}用原名。\n【禁止空话】有要求的字段不能写“无”“未记”“不详”，必须根据世界书、正文和时间线推演具体内容；实在没有信息就写合理推测，不要省略整块。\n【本回必须输出】${on.join('、')}。对应字段即使没有变化也必须出现；没有内容就输出空数组/当前状态，不要整块省略。${medicalNote}\n`;
 }
 
 function buildModuleHandbook() {
@@ -2652,7 +2658,7 @@ async function collectWorldbookContext(haystack) {
     if (mode === 'off') return '';
     if (mode === 'follow' && !isStWorldbookEnabled()) return '';
     const now = Date.now();
-    const cacheKey = hashString(mode + '|' + context.slice(0, 4000));
+    const cacheKey = hashString(mode + '|' + JSON.stringify(getSettings().worldbookEntries || {}) + '|' + context.slice(0, 4000));
     if (worldbookCache.text && worldbookCache.key === cacheKey && now - worldbookCache.time < 30000) return worldbookCache.text;
     const chunks = [];
     const seen = new Set();
@@ -2664,11 +2670,6 @@ async function collectWorldbookContext(haystack) {
             const content = String(entry.content || entry.内容 || '').trim();
             if (!content) return;
             const title = String(entry.comment || entry.name || entry.标题 || '').trim();
-            const rawKeys = [].concat((entry.strategy && entry.strategy.keys) || [], entry.key || [], entry.keys || entry.关键字 || []);
-            const keys = rawKeys.flatMap(item => String(item).split(/[,，、\s]+/)).filter(k => k.length >= 2);
-            const matched = !!context && (keys.some(k => context.includes(k.toLowerCase())) || (title.length >= 2 && context.includes(title.toLowerCase())));
-            // 只读相关条目，不把整本世界书塞进提示词。
-            if (!matched) return;
             const key = title + '\u0000' + content.slice(0, 80);
             if (seen.has(key)) return;
             seen.add(key);
@@ -2686,9 +2687,8 @@ async function collectWorldbookContext(haystack) {
             } catch (e) { /* ignore */ }
         }
         addEntries(list, name);
-        if (chunks.join('\n').length > 8000) break;
     }
-    const text = chunks.join('\n').slice(0, 8000);
+    const text = chunks.join('\n');
     if (text) worldbookCache = { time: now, key: cacheKey, text };
     return text;
 }
@@ -4061,6 +4061,12 @@ const CSS = `
     font-weight: 700;
 }
 .lx-field-hint { color: var(--lx-dim); font-size: 10.5px; font-style: italic; margin-top: 5px; line-height: 1.5; }
+.lx-module-tools { display: flex; justify-content: flex-end; gap: 5px; margin: -2px 0 7px; }
+.lx-module-tools .lx-mini-btn { padding: 2px 7px; font-size: 9px; }
+.lx-module-items { max-height: 360px; overflow: auto; margin: 8px 0; border: 1px solid var(--lx-border); background: var(--lx-event-bg); }
+.lx-module-item { display: block; padding: 6px 8px; border-bottom: 1px solid var(--lx-border); color: var(--lx-text2); font-size: 10.5px; }
+.lx-module-item:last-child { border-bottom: 0; }
+.lx-module-item input { width: 13px; height: 13px; accent-color: var(--lx-gold); vertical-align: middle; margin-right: 5px; }
 .lx-wb-list { max-height: 260px; overflow: auto; margin-top: 7px; border: 1px solid var(--lx-border); background: var(--lx-event-bg); }
 .lx-wb-item { display: block; padding: 7px 8px; border-bottom: 1px solid var(--lx-border); cursor: pointer; }
 .lx-wb-item:last-child { border-bottom: 0; }
@@ -5184,7 +5190,10 @@ function panelFor(name) {
 function setPanel(name, html) {
     const panel = panelFor(name);
     if (!panel) return;
-    panel.innerHTML = `<div class="lx-section-head">${escapeHtml(name)}</div>` + html;
+    const tools = name === '时间线'
+        ? ''
+        : `<div class="lx-module-tools"><button type="button" class="lx-mini-btn" data-action="module-edit" data-module="${escapeAttr(name)}">改</button><button type="button" class="lx-mini-btn" data-action="module-batch" data-module="${escapeAttr(name)}">批量</button></div>`;
+    panel.innerHTML = `<div class="lx-section-head">${escapeHtml(name)}</div>${tools}` + html;
 }
 
 function textMatch(...parts) {
@@ -5723,6 +5732,30 @@ function renderTimeline(data, range) {
     (Array.isArray(data.伏笔) ? data.伏笔 : []).forEach(item => {
         items.push({ round: toInt(item.回合, 0), type: '伏笔', text: item.内容 || '' });
     });
+    (Array.isArray(data.秘辛) ? data.秘辛 : []).forEach(item => {
+        items.push({ round: toInt(item.回合, 0), type: '秘辛', text: item.内容 || '' });
+    });
+    ((data.朝堂门阀 && data.朝堂门阀.派系) || []).forEach(item => {
+        items.push({ round: toInt(item.回合, 0), type: '派系', text: `${item.派系名 || ''}：${item.主张 || ''}` });
+    });
+    ((data.朝堂门阀 && data.朝堂门阀.家族) || []).forEach(item => {
+        items.push({ round: toInt(item.回合, 0), type: '门阀', text: `${item.家族 || ''}：${item.立场 || ''}` });
+    });
+    (Array.isArray(data.医疗健康) ? data.医疗健康 : []).forEach(item => {
+        items.push({ round: toInt(item.回合, 0), type: '医疗', text: `${item.人物 || ''}：${item.症状 || ''}${item.诊断 ? '，' + item.诊断 : ''}` });
+    });
+    (Array.isArray(data.孕事) ? data.孕事 : []).forEach(item => {
+        items.push({ round: toInt(item.回合, 0), type: '孕事', text: `${item.人物 || ''}：孕 ${item.孕月 || '?'} 月，${item.状态 || ''}` });
+    });
+    (Array.isArray(data.孕事子女) ? data.孕事子女 : []).forEach(item => {
+        items.push({ round: toInt(item.回合, 0), type: '孕事子女', text: `${item.姓名 || ''}，生母${item.生母 || '不详'}` });
+    });
+    ((data.时令 && data.时令.宴席) || []).forEach(item => {
+        items.push({ round: toInt(item.回合, 0), type: '宴席', text: `${item.名称 || ''}，主家${item.主家 || ''}` });
+    });
+    ((data.子嗣 && data.子嗣.子女) || []).forEach(item => {
+        items.push({ round: toInt(item.回合, 0), type: '子嗣', text: `${item.姓名 || ''}，生母${item.生母 || '不详'}` });
+    });
 
     items.sort((a, b) => b.round - a.round);
     let filtered = items.filter(item => textMatch(item.type, item.text));
@@ -5948,7 +5981,7 @@ async function saveHeirCycle(date) {
     data.子嗣 = normalizeHeir(data.子嗣, 0);
     data.子嗣.用户.月事自定义 = String(date || '').trim();
     data.子嗣.用户.月事来源 = date ? '手动' : '推演';
-    if (!date) data.子嗣.用户.月事最近 = '';
+    if (!date) data.子嗣.用户.月事最近 = data.子嗣.用户.月事推演 || '';
     data.子嗣 = deriveMenstrualCycle(data.子嗣, data.时令);
     const tid = getLatestAssistantId();
     if (tid >= 0) await attachGroupData(tid, data);
@@ -6003,7 +6036,7 @@ function renderHeir(heir) {
             </div>
             <div class="lx-heir-status">${escapeHtml(user.状态 || '未孕')}</div>
             <div class="lx-heir-line"><b>月事</b>${escapeHtml(user.月事最近 || '未记')}${user.月事周期 ? `　周期 ${user.月事周期} 日` : ''}${user.月事持续 ? `　持续 ${user.月事持续} 日` : ''}</div>
-            <div class="lx-heir-line"><b>排卵期</b>${escapeHtml(user.排卵期 || '未记')}${user.排卵可能 ? `　${escapeHtml(user.排卵可能)}` : ''}</div>
+            <div class="lx-heir-line"><b>排卵期</b>${escapeHtml(user.排卵期 || '未记')}${user.排卵可能 ? `　${escapeHtml(user.排卵可能)}` : ''}${user.排卵状态 ? `　${escapeHtml(user.排卵状态)}` : ''}</div>
             <div class="lx-heir-line"><b>谁知道</b>${known.length ? known.map(k => `<span class="lx-secret-chip known">${escapeHtml(k.人物)}·${escapeHtml(k.程度)}</span>`).join('') : '<span class="lx-secret-none">尚未有人察觉</span>'}</div>
             ${user.备注 ? `<div class="lx-preg-note">${escapeHtml(user.备注)}</div>` : ''}
             <div class="lx-heir-tip">${escapeHtml(pregnancyTip(user.孕期月))}</div>
@@ -7097,6 +7130,133 @@ async function openPromptPreview() {
     });
 }
 
+const MODULE_PATHS = {
+    'NPC状态': 'NPC状态', 'NPC事件': 'NPC事件', '国家事件': '国家事件', '邻国事件': '邻国事件',
+    '奏折': '奏折', '秘辛': '秘辛', '流言': '流言', '斗争': '斗争', '朝堂门阀': '朝堂门阀',
+    '医疗健康': '医疗健康', '书信': '书信', '时令': '时令', '关系图': '关系', '伏笔': '伏笔',
+    '孕事': '孕事', '子嗣': '子嗣'
+};
+
+function modulePath(name) {
+    return MODULE_PATHS[name] || '';
+}
+
+function moduleValue(data, name) {
+    const path = modulePath(name);
+    return path ? data[path] : null;
+}
+
+function moduleSummary(item) {
+    if (!item || typeof item !== 'object') return String(item || '');
+    return item.事件名 || item.标题 || item.姓名 || item.派系名 || item.家族 || item.人物 || item.内容 || item.来源 || JSON.stringify(item).slice(0, 80);
+}
+
+async function saveModuleValue(name, value) {
+    const path = modulePath(name);
+    if (!path) return;
+    const data = normalizeData(getGroupData() || {});
+    data[path] = value;
+    const tid = getLatestAssistantId();
+    if (tid < 0) { toast('error', '还没有 AI 消息'); return; }
+    await attachGroupData(tid, normalizeData(data));
+    invalidateData();
+    renderAll();
+    setupInjection(true);
+}
+
+function moduleEditorModal(name, value, onSave) {
+    if (!state.root) return;
+    const old = state.root.querySelector('.lx-reroll-mask');
+    if (old) old.remove();
+    const doc = state.doc || getDoc();
+    const mask = doc.createElement('div');
+    mask.className = 'lx-reroll-mask';
+    mask.innerHTML = `<div class="lx-reroll-dialog" style="width:min(94vw,640px);">
+        <div class="lx-reroll-title">${escapeHtml(name)} · 编辑</div>
+        <div class="lx-reroll-hint">直接修改这一模块的 JSON，保存后写回当前楼层。</div>
+        <textarea class="lx-reroll-input" style="min-height:320px;font-family:monospace;font-size:10px;">${escapeHtml(JSON.stringify(value, null, 2))}</textarea>
+        <div class="lx-reroll-actions"><button type="button" class="lx-mini-btn" data-mod-cancel>取消</button><button type="button" class="lx-mini-btn lx-btn-primary" data-mod-save>保存</button></div>
+    </div>`;
+    state.root.appendChild(mask);
+    const close = () => mask.remove();
+    mask.querySelector('[data-mod-cancel]').addEventListener('click', close);
+    mask.addEventListener('click', e => { if (e.target === mask) close(); });
+    mask.querySelector('[data-mod-save]').addEventListener('click', async () => {
+        try {
+            const parsed = JSON.parse(mask.querySelector('textarea').value);
+            await onSave(parsed);
+            close();
+            toast('success', '已保存');
+        } catch (e) { toast('error', '保存失败：' + (e.message || e)); }
+    });
+}
+
+async function openModuleEditor(name) {
+    const data = normalizeData(getGroupData() || {});
+    const value = moduleValue(data, name);
+    moduleEditorModal(name, value, parsed => saveModuleValue(name, parsed));
+}
+
+async function openModuleBatch(name) {
+    const data = normalizeData(getGroupData() || {});
+    const value = moduleValue(data, name);
+    if (!value) return;
+    const isObject = !Array.isArray(value) && typeof value === 'object';
+    const items = isObject ? Object.keys(value).map(key => ({ key, item: value[key] })) : value.map((item, index) => ({ key: String(index), item }));
+    if (!items.length) { toast('warning', name + ' 没有可操作条目'); return; }
+    if (!state.root) return;
+    const old = state.root.querySelector('.lx-reroll-mask');
+    if (old) old.remove();
+    const doc = state.doc || getDoc();
+    const recoverable = ['NPC事件', '国家事件', '邻国事件', '伏笔', '斗争', '奏折'].includes(name);
+    const mask = doc.createElement('div');
+    mask.className = 'lx-reroll-mask';
+    mask.innerHTML = `<div class="lx-reroll-dialog" style="width:min(94vw,620px);">
+        <div class="lx-reroll-title">${escapeHtml(name)} · 批量</div>
+        <div class="lx-reroll-hint">勾选条目后删除${recoverable ? '或回收' : ''}。</div>
+        <div class="lx-module-items">${items.map(x => `<label class="lx-module-item"><input type="checkbox" value="${escapeAttr(x.key)}">${escapeHtml(moduleSummary(x.item))}</label>`).join('')}</div>
+        <div class="lx-reroll-actions"><button type="button" class="lx-mini-btn" data-mod-cancel>取消</button>${recoverable ? '<button type="button" class="lx-mini-btn" data-mod-recycle>回收选中</button>' : ''}<button type="button" class="lx-mini-btn lx-btn-primary" data-mod-delete>删除选中</button></div>
+    </div>`;
+    state.root.appendChild(mask);
+    const close = () => mask.remove();
+    mask.querySelector('[data-mod-cancel]').addEventListener('click', close);
+    mask.addEventListener('click', e => { if (e.target === mask) close(); });
+    const selected = () => Array.from(mask.querySelectorAll('.lx-module-item input:checked')).map(el => el.value);
+    mask.querySelector('[data-mod-delete]').addEventListener('click', async () => {
+        const keys = selected();
+        if (!keys.length) { toast('warning', '还没有选中项'); return; }
+        const next = normalizeData(getGroupData() || {});
+        const path = modulePath(name);
+        if (isObject) keys.forEach(key => delete next[path][key]);
+        else next[path] = next[path].filter((_, index) => !keys.includes(String(index)));
+        const tid = getLatestAssistantId();
+        if (tid >= 0) await attachGroupData(tid, normalizeData(next));
+        invalidateData(); renderAll(); setupInjection(true);
+        close(); toast('success', '已删除选中项');
+    });
+    const recycleBtn = mask.querySelector('[data-mod-recycle]');
+    if (recycleBtn) recycleBtn.addEventListener('click', async () => {
+        const keys = selected();
+        if (!keys.length) { toast('warning', '还没有选中项'); return; }
+        const next = normalizeData(getGroupData() || {});
+        const path = modulePath(name);
+        const target = next[path];
+        if (Array.isArray(target)) {
+            keys.forEach(key => {
+                const item = target[Number(key)];
+                if (!item) return;
+                if (name === '伏笔') { item.已回收 = true; item.回收回合 = next.最后更新回合 || 0; }
+                else if (name === '奏折') item.状态 = '已结';
+                else { item.进度 = 100; item.结果 = item.结果 || '已收场'; }
+            });
+        }
+        const tid = getLatestAssistantId();
+        if (tid >= 0) await attachGroupData(tid, normalizeData(next));
+        invalidateData(); renderAll(); setupInjection(true);
+        close(); toast('success', '已回收选中项');
+    });
+}
+
 function openDataEditor() {
     if (!state.root) return;
     const old = state.root.querySelector('.lx-reroll-mask');
@@ -7222,6 +7382,12 @@ async function handleAction(action, element) {
             return;
         case 'data-edit':
             openDataEditor();
+            return;
+        case 'module-edit':
+            await openModuleEditor(element.dataset.module || '');
+            return;
+        case 'module-batch':
+            await openModuleBatch(element.dataset.module || '');
             return;
         case 'wb-refresh':
             state.worldbookLoaded = false;
