@@ -401,8 +401,8 @@ const NPC_TITLES = ['皇太后', '太后', '皇后', '贵妃', '淑妃', '德妃
 function normalizeNpcDisplayName(name) {
     let n = cleanName(name).replace(/[（(][^）)]*[）)]/g, '').trim();
     if (!n) return inventNpcName(name);
-    if (/[·|｜]/.test(n)) {
-        const parts = n.split(/[·|｜]/).map(s => s.trim()).filter(Boolean);
+    if (/[·|｜\-—:：]/.test(n)) {
+        const parts = n.split(/[·|｜\-—:：]/).map(s => s.trim()).filter(Boolean);
         n = parts.find(p => !NPC_TITLES.some(t => p === t)) || parts[0] || n;
     }
     // “沈微澜 淑妃”“沈微澜淑妃”“崔尚书” → 去掉尾部位份；只有一个姓时补全名。
@@ -1008,6 +1008,13 @@ function normalizeData(raw) {
     out.最后更新回合 = Math.max(0, toInt(out.最后更新回合, 0));
     out.子嗣 = deriveChildAges(out.子嗣, out.时令);
     out.孕事子女 = deriveChildAges({ 用户: {}, 子女: out.孕事子女 }, out.时令).子女;
+    const knownNames = Object.keys(out.NPC状态 || {}).filter(name => !isBlacklisted(name));
+    (out.伏笔 || []).forEach(item => {
+        const source = cleanName(item.来源);
+        if (source && !['手动', '未记名', 'NPC', '群像', '剧情'].includes(source)) return;
+        const hit = knownNames.find(name => String(item.内容 || '').includes(name));
+        item.来源 = hit || knownNames[0] || inventNpcName(item.内容 || '伏笔');
+    });
     out.版本 = 2;
     return out;
 }
@@ -2034,7 +2041,7 @@ function mergeGroupData(oldData, fresh) {
 
     if (isPlainObject(fresh.NPC状态)) {
         Object.entries(fresh.NPC状态).forEach(([rawName, patch]) => {
-            const name = cleanName(rawName);
+            const name = normalizeNpcDisplayName(rawName);
             if (isBlacklisted(name)) return;
             const clean = normalizeNpcPatch(patch);
             if (!Object.keys(clean).length) return;
@@ -2679,6 +2686,38 @@ async function collectWorldbookContext(haystack) {
     return text;
 }
 
+function buildPersonaPrompt() {
+    const parts = [];
+    try {
+        const ctx = typeof getContext === 'function' ? getContext() : null;
+        if (ctx) {
+            const personas = ctx.personas || {};
+            const key = ctx.persona || ctx.user_persona || '';
+            let persona = personas && personas[key];
+            if (!persona && Array.isArray(personas)) persona = personas.find(p => p && (p.name === key || p.id === key));
+            const userText = [
+                persona && (persona.description || persona.text || persona.content),
+                ctx.user_persona && typeof ctx.user_persona === 'string' ? ctx.user_persona : ''
+            ].filter(Boolean).join('\n').trim();
+            if (userText) parts.push(`【{{user}}人设】\n${userText.slice(0, 3000)}`);
+
+            const chid = ctx.characterId !== undefined ? ctx.characterId : ctx.chid;
+            const chars = ctx.characters;
+            const char = Array.isArray(chars) ? (chars[chid] || chars[Number(chid)]) : null;
+            if (char) {
+                const charText = [
+                    char.description && `描述：${char.description}`,
+                    char.personality && `性格：${char.personality}`,
+                    char.scenario && `场景：${char.scenario}`,
+                    char.system_prompt && `系统提示：${char.system_prompt}`
+                ].filter(Boolean).join('\n').trim();
+                if (charText) parts.push(`【${char.name || ctx.name2 || '李承璟'}人设】\n${charText.slice(0, 3000)}`);
+            }
+        }
+    } catch (e) { /* ignore */ }
+    return parts.length ? '\n\n【人物设定（以这里为准，不要改写）】\n' + parts.join('\n\n') : '';
+}
+
 async function buildWorldbookPrompt(haystack) {
     const text = await collectWorldbookContext(haystack);
     return text ? `\n\n【世界书资料】（只取与当前人物/剧情相关的条目；人物关系、已有子女、孕事、位份以此为准，没写的不要编）\n${text}` : '';
@@ -2698,6 +2737,7 @@ async function buildPromptPreview() {
     const baselineText = JSON.stringify(baseline, null, 2).slice(0, 18000);
     const worldbookText = await buildWorldbookPrompt(ctx + '\n' + baselineText);
     return wrapSubPrompt(core)
+        + buildPersonaPrompt()
         + worldbookText
         + `\n\n【当前群像状态】\n` + baselineText
         + `\n\n【本回正文】\n` + ctx.slice(0, 12000)
@@ -2733,6 +2773,7 @@ async function generateSub(settings, options) {
     const baselineText = JSON.stringify(baseline, null, 2).slice(0, 18000);
     const worldbookText = await buildWorldbookPrompt(ctx + '\n' + baselineText + '\n' + (opts.instruction || ''));
     const prompt = wrapSubPrompt(core)
+        + buildPersonaPrompt()
         + worldbookText
         + (opts.initial ? '\n\n【开局补全】这是第一次补全：结合世界书、人设、开场白和最初几层对话，建立所有已出现和世界书提到的 NPC、国家事件、时令与线索；不要只写眼前几个人。' : '')
         + (opts.instruction ? `\n\n【本次重roll要求】\n${opts.instruction}` : '')
