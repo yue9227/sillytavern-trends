@@ -1,4 +1,4 @@
-const VERSION = '0.1.4';
+const VERSION = '0.1.5';
 let userNamesCache = { time: 0, names: [] };
 const HOST_ID = 'lx-group-host';
 const LEGACY_IDS = ['lx-ball', 'lx-panel', 'lx-mask', 'lx-settings', 'lx-group-style'];
@@ -3548,6 +3548,10 @@ const CSS = `
 }
 .lx-reroll-dialog {
     width: min(88vw, 380px);
+    max-height: calc(100dvh - 24px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
     border: 1px solid var(--lx-border);
     background: var(--lx-bg);
     color: var(--lx-text);
@@ -3558,7 +3562,10 @@ const CSS = `
 .lx-reroll-hint { color: var(--lx-dim); font-size: 10px; line-height: 1.6; margin-bottom: 8px; }
 .lx-reroll-input {
     width: 100%;
-    min-height: 86px;
+    flex: 1 1 auto;
+    min-height: 160px;
+    max-height: calc(100dvh - 170px);
+    overflow: auto;
     resize: vertical;
     padding: 8px;
     border: 1px solid var(--lx-border);
@@ -4068,7 +4075,7 @@ const CSS = `
     transition: border-color 0.15s;
 }
 .lx-input:focus, .lx-textarea:focus, .lx-select:focus { border-color: var(--lx-gold); }
-.lx-textarea { min-height: 140px; resize: vertical; line-height: 1.6; font-size: 12px; }
+.lx-textarea { min-height: 140px; height: min(40dvh, 340px); max-height: 40dvh; resize: vertical; line-height: 1.6; font-size: 12px; overflow: auto; }
 .lx-select { appearance: none; -webkit-appearance: none; }
 .lx-select option { background: var(--lx-bg-solid); color: var(--lx-text); }
 
@@ -6114,7 +6121,7 @@ function checkRow(id, checked, label) {
 }
 
 function worldbookSettingsHTML() {
-    if (state.worldbookLoading) return '<div class="lx-field-hint">正在读取当前角色卡绑定的世界书…</div>';
+    if (state.worldbookLoading || !state.worldbookLoaded) return '<div class="lx-field-hint">正在读取当前角色卡绑定的世界书…</div>';
     const entries = state.worldbookEntryCache || [];
     if (!entries.length) return '<div class="lx-field-hint">当前角色卡没有绑定可读世界书，或酒馆世界书已关闭。</div>';
     return entries.slice(0, 80).map(entry => `<label class="lx-wb-item">
