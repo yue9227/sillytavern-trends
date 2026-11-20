@@ -1,8 +1,8 @@
-const VERSION = '0.0.3';
+const VERSION = '0.0.4';
 const HOST_ID = 'lx-group-host';
 const LEGACY_IDS = ['lx-ball', 'lx-panel', 'lx-mask', 'lx-settings', 'lx-group-style'];
 const MAX_LOG = 10;
-const BALL_MARGIN = 8;
+const BALL_MARGIN = 2;
 const CHARACTER_NAME = '李承璟';
 
 const THEMES = {
@@ -93,6 +93,7 @@ const DEFAULT_SETTINGS = {
     foreshadowUser: true,
     leadGroup: true,
     ballSize: 50,
+    ballStyle: 'compass',
     ballImage: '',
     apiProfiles: [],
     apiProfileId: '',
@@ -811,6 +812,7 @@ function normalizeSettings(raw) {
         out[key] = out[key] !== false;
     });
     out.ballSize = clamp(toInt(out.ballSize, 50), 36, 84);
+    out.ballStyle = ['compass','lantern','seal','mirror','bamboo'].includes(out.ballStyle) ? out.ballStyle : 'compass';
     out.ballImage = typeof out.ballImage === 'string' && /^data:image\//.test(out.ballImage) ? out.ballImage.slice(0, 2000000) : '';
     out.apiProfiles = normalizeApiProfiles(out.apiProfiles);
     out.apiProfileId = String(out.apiProfileId || '').trim();
@@ -2248,6 +2250,123 @@ const CSS = `
 #lx-ball.has-custom-image .lx-ball-gem { display: none; }
 #lx-ball.has-custom-image::before,
 #lx-ball.has-custom-image::after { display: none; }
+#lx-ball.has-custom-image {
+    clip-path: none !important;
+    border-radius: 50% !important;
+    border: 0 !important;
+    background: #120c07;
+}
+
+/* 悬浮球外观：罗盘 / 宫灯 / 玉玺 / 铜镜 / 竹简 */
+#lx-ball.style-lantern:not(.has-custom-image) {
+    border-radius: 0;
+    clip-path: polygon(50% 0, 92% 22%, 92% 78%, 50% 100%, 8% 78%, 8% 22%);
+    background: linear-gradient(180deg, #a4472f, #6e211c 45%, #3a0f10);
+    filter: drop-shadow(0 0 10px rgba(230,150,70,.35));
+}
+#lx-ball.style-lantern::before {
+    inset: 4px; border: 1px solid rgba(240,200,120,.55); border-radius: 0;
+    background: repeating-linear-gradient(90deg, rgba(240,200,120,.16) 0 1px, transparent 1px 9px);
+    transform: none; opacity: .8;
+}
+#lx-ball.style-lantern::after { inset: 0; background: linear-gradient(180deg, rgba(255,220,150,.18), transparent 40%, rgba(0,0,0,.28)); }
+#lx-ball.style-lantern .lx-ball-ring { display: none; }
+#lx-ball.style-lantern .lx-ball-core {
+    inset: 28%; border-radius: 50%; border: 0;
+    background: radial-gradient(ellipse at 50% 40%, #ffe6a8, #e2a44f 55%, #9b4f23);
+    box-shadow: 0 0 18px rgba(255,200,110,.7);
+}
+#lx-ball.style-lantern .lx-ball-gem { display: none; }
+#lx-ball.style-lantern .lx-ball-halo { background: radial-gradient(circle, rgba(230,140,70,.32), transparent 68%); }
+
+#lx-ball.style-seal:not(.has-custom-image) {
+    border-radius: 4px;
+    clip-path: none;
+    border: 2px solid #d6c38d;
+    background: linear-gradient(135deg, #b9d6b0, #7fa786 38%, #4d7257 70%, #33513d);
+    box-shadow: 0 8px 20px rgba(0,0,0,.5), inset 0 2px 4px rgba(255,255,255,.4), inset 0 -8px 16px rgba(0,0,0,.25);
+}
+#lx-ball.style-seal::before {
+    content: ""; position: absolute; left: 50%; top: -10px; width: 16px; height: 12px;
+    transform: translateX(-50%);
+    border: 1px solid #e6d39b; border-radius: 5px 5px 2px 2px;
+    background: linear-gradient(135deg, #d9c28f, #9c7c43);
+    opacity: 1;
+}
+#lx-ball.style-seal::after {
+    left: 5px; right: 5px; bottom: 5px; top: auto; height: 14px;
+    transform: none; border: 1px solid #9d3a2a; border-radius: 1px;
+    background: repeating-linear-gradient(90deg, rgba(157,58,42,.18) 0 2px, transparent 2px 5px);
+    opacity: .9;
+}
+#lx-ball.style-seal .lx-ball-ring,
+#lx-ball.style-seal .lx-ball-core,
+#lx-ball.style-seal .lx-ball-gem { display: none; }
+#lx-ball.style-seal .lx-ball-halo { background: radial-gradient(circle, rgba(120,190,140,.28), transparent 68%); }
+
+#lx-ball.style-mirror:not(.has-custom-image) {
+    border-radius: 50%;
+    border: 2px solid #d4b16b;
+    background: radial-gradient(circle at 36% 28%, #f2dfb0, #c69a56 30%, #7b5128 64%, #3a2816 100%);
+    box-shadow: 0 8px 22px rgba(0,0,0,.55), inset 0 0 0 4px rgba(70,45,20,.32), inset 0 2px 8px rgba(255,255,255,.35);
+}
+#lx-ball.style-mirror::before {
+    inset: 7px; border: 1px solid rgba(68,44,20,.55); background: transparent;
+    transform: none; opacity: 1; box-shadow: inset 0 0 10px rgba(255,240,200,.18);
+}
+#lx-ball.style-mirror::after {
+    content: ""; position: absolute; left: 50%; top: 86%; width: 8px; height: 18px;
+    transform: translateX(-50%);
+    border: 1px solid #e0c07a; border-radius: 2px 2px 5px 5px;
+    background: linear-gradient(90deg, #6f4b25, #d4b16b 45%, #6f4b25);
+}
+#lx-ball.style-mirror .lx-ball-ring { display: none; }
+#lx-ball.style-mirror .lx-ball-core {
+    inset: 38%; border: 0; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #3c2814, #1e1209);
+    box-shadow: 0 0 0 2px rgba(60,40,20,.35);
+}
+#lx-ball.style-mirror .lx-ball-gem { display: none; }
+#lx-ball.style-mirror .lx-ball-halo { background: radial-gradient(circle, rgba(212,175,55,.22), transparent 68%); }
+
+#lx-ball.style-bamboo:not(.has-custom-image) {
+    border-radius: 3px;
+    clip-path: none;
+    border: 2px solid #6f8a5c;
+    background:
+        repeating-linear-gradient(90deg, #d8c486 0 2px, #8f9e62 2px 3px, #c7b877 3px 7px, transparent 7px 9px),
+        linear-gradient(180deg, #d9c98c, #8a925c);
+    box-shadow: 0 8px 20px rgba(0,0,0,.48), inset 0 2px 4px rgba(255,255,255,.3);
+}
+#lx-ball.style-bamboo::before {
+    content: ""; position: absolute; left: -2px; right: -2px; top: 10px; height: 2px;
+    border: 0; border-radius: 0; transform: none; opacity: 1;
+    background: #6b3f2d; box-shadow: 0 22px 0 #6b3f2d;
+}
+#lx-ball.style-bamboo::after {
+    content: ""; position: absolute; left: 50%; top: -8px; width: 12px; height: 8px;
+    transform: translateX(-50%);
+    border: 2px solid #b28e55; border-bottom: none; border-radius: 8px 8px 0 0;
+    background: transparent;
+}
+#lx-ball.style-bamboo .lx-ball-ring,
+#lx-ball.style-bamboo .lx-ball-core,
+#lx-ball.style-bamboo .lx-ball-gem { display: none; }
+#lx-ball.style-bamboo .lx-ball-halo { background: radial-gradient(circle, rgba(130,160,110,.25), transparent 68%); }
+
+.lx-ball-style-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.lx-ball-style-item {
+    padding: 6px 2px; border: 1px solid var(--lx-border); background: var(--lx-event-bg);
+    text-align: center; cursor: pointer; font-size: 9.5px; color: var(--lx-muted, var(--lx-dim));
+}
+.lx-ball-style-item.active { border-color: var(--lx-gold); color: var(--lx-gold); box-shadow: inset 0 0 0 1px var(--lx-gold); }
+.lx-ball-thumb { display: block; width: 30px; height: 30px; margin: 0 auto 4px; position: relative; }
+.thumb-compass { border-radius: 50%; background: radial-gradient(circle at 35% 30%, #6b4d2a, #120c07); border: 1px solid #d4af37; box-shadow: inset 0 0 0 4px rgba(212,175,55,.18); }
+.thumb-lantern { background: linear-gradient(180deg, #a4472f, #3a0f10); clip-path: polygon(50% 0, 92% 22%, 92% 78%, 50% 100%, 8% 78%, 8% 22%); border: 1px solid #d9b46a; }
+.thumb-seal { width: 26px; height: 26px; background: linear-gradient(135deg, #b9d6b0, #4d7257); border: 1px solid #d6c38d; border-radius: 3px; }
+.thumb-mirror { border-radius: 50%; background: radial-gradient(circle at 35% 30%, #f2dfb0, #7b5128 70%); border: 1px solid #d4b16b; }
+.thumb-mirror::after { content: ""; position: absolute; left: 50%; top: 80%; width: 4px; height: 9px; transform: translateX(-50%); background: #b28e55; }
+.thumb-bamboo { width: 22px; height: 28px; background: repeating-linear-gradient(90deg, #d8c486 0 2px, #8f9e62 2px 3px, #c7b877 3px 6px); border: 1px solid #6f8a5c; border-radius: 2px; }
 .lx-ball-gem {
     position: absolute;
     left: 50%;
@@ -3546,6 +3665,8 @@ function applyBallAppearance() {
     if (!ball) return;
     const img = ball.querySelector('#lx-ball-image');
     const hasImage = !!s.ballImage;
+    ball.classList.remove('style-compass', 'style-lantern', 'style-seal', 'style-mirror', 'style-bamboo');
+    ball.classList.add('style-' + (s.ballStyle || 'compass'));
     ball.classList.toggle('has-custom-image', hasImage);
     if (img) {
         if (hasImage) {
@@ -3642,15 +3763,11 @@ function snapBallToEdge() {
     const top = parseFloat(ball.style.top) || 0;
     const minLeft = vp.offsetLeft + BALL_MARGIN;
     const maxLeft = Math.max(minLeft, vp.offsetLeft + vp.width - size - BALL_MARGIN);
-    const near = vp.width * 0.24;
-    let target = left;
-    if (left - minLeft <= near) target = minLeft;
-    else if (maxLeft - left <= near) target = maxLeft;
-    if (Math.abs(target - left) > 1) {
-        ball.classList.add('snapping');
-        setBallPosition(target, top);
-        setTimeout(() => ball.classList.remove('snapping'), 220);
-    }
+    // 松手后始终吸附到最近的一侧屏幕边缘，而不是只在“接近边缘”时吸附。
+    const target = (left + size / 2) <= (vp.offsetLeft + vp.width / 2) ? minLeft : maxLeft;
+    ball.classList.add('snapping');
+    setBallPosition(target, top);
+    setTimeout(() => ball.classList.remove('snapping'), 220);
 }
 
 function saveBallPosition() {
@@ -4342,6 +4459,13 @@ function buildSettingsHTML() {
     const apiProfileOptions = (s.apiProfiles || []).map(item =>
         `<option value="${escapeAttr(item.id)}" ${item.id === s.apiProfileId ? 'selected' : ''}>${escapeHtml(item.name)} · ${escapeHtml(item.model || '未填模型')}</option>`
     ).join('');
+    const ballStyleItems = [
+        ['compass', '罗盘'], ['lantern', '宫灯'], ['seal', '玉玺'], ['mirror', '铜镜'], ['bamboo', '竹简']
+    ].map(([key, label]) => `
+        <div class="lx-ball-style-item ${s.ballStyle === key ? 'active' : ''}" data-action="ball-style" data-style="${key}">
+            <span class="lx-ball-thumb thumb-${key}"></span>${label}
+        </div>
+    `).join('');
     const themeItems = Object.keys(THEMES).map(key => `
         <div class="lx-theme-item ${s.theme === key ? 'active' : ''}" data-action="theme" data-theme="${key}">
             <div class="lx-theme-swatch" style="background:${THEMES[key].solid};border:2px solid ${THEMES[key].gold};"></div>
@@ -4508,6 +4632,11 @@ function buildSettingsHTML() {
             <div class="lx-field">
                 <label class="lx-field-label">配色方案</label>
                 <div class="lx-theme-grid">${themeItems}</div>
+            </div>
+            <div class="lx-field">
+                <label class="lx-field-label">悬浮球外观</label>
+                <div class="lx-ball-style-grid">${ballStyleItems}</div>
+                <div class="lx-field-hint">五种完全不同的轮廓；上传图片后会优先显示你的图片。</div>
             </div>
             <div class="lx-field">
                 <label class="lx-field-label">悬浮球大小</label>
@@ -5176,6 +5305,17 @@ async function handleAction(action, element) {
         case 'api-del':
             deleteApiProfile();
             return;
+        case 'ball-style': {
+            const style = ['compass', 'lantern', 'seal', 'mirror', 'bamboo'].includes(element.dataset.style) ? element.dataset.style : 'compass';
+            saveSettings({ ballStyle: style });
+            applyBallAppearance();
+            if (state.refs.settings) {
+                state.refs.settings.querySelectorAll('.lx-ball-style-item').forEach(el => {
+                    el.classList.toggle('active', el.dataset.style === style);
+                });
+            }
+            return;
+        }
         case 'ball-image-reset':
             saveSettings({ ballImage: '' });
             applyBallAppearance();
