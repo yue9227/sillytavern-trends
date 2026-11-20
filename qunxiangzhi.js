@@ -1,4 +1,5 @@
-const VERSION = '0.0.4';
+const VERSION = '0.0.5';
+let userNamesCache = { time: 0, names: [] };
 const HOST_ID = 'lx-group-host';
 const LEGACY_IDS = ['lx-ball', 'lx-panel', 'lx-mask', 'lx-settings', 'lx-group-style'];
 const MAX_LOG = 10;
@@ -66,12 +67,13 @@ const DEFAULT_SETTINGS = {
     enabled: true,
     mode: 'sub',
     trigger: 'auto',
+    initialFill: 'auto',
     presetName: '正常',
     subApiUrl: '',
     subApiKey: '',
     subApiModel: '',
     temperature: 0.6,
-    maxTokens: 3200,
+    maxTokens: 4000,
     debug: false,
     theme: 'A',
     injectEvents: true,
@@ -95,6 +97,7 @@ const DEFAULT_SETTINGS = {
     ballSize: 50,
     ballStyle: 'compass',
     ballImage: '',
+    panelImage: '',
     apiProfiles: [],
     apiProfileId: '',
     ballPos: { x: null, y: 0.28 }
@@ -112,7 +115,7 @@ const PRESET_DEFAULT = {
 5. 伏笔一旦在本回被揭开、兑现、放弃，必须写“已回收”:true；不许留着了又当新伏笔。
 
 【每个模块写什么】
-- NPC状态：本回有动作或状态变化的具名人物，最多 3 人。写心情、位置、身份、当前所做；不写“一切如常”。
+- NPC状态：不设数量上限；只写本回有动作、状态变化或值得续写的人。已出场和没出场的都可以写，不要只写眼前几个人；但也不要为了凑数把没变化的人重写一遍。
 - NPC事件：个人线，1-2 条。至少 1 条属于本回没出场的 NPC，写他/她自己在忙什么。
 - 国家事件：朝廷/国家层面，1 条。写朝议、诏令、财政、军队、灾异、礼制、刑狱；不是某个人的心情或位置。没有大事就记一条低强度朝议或奏报。
 - 邻国事件：外国/边境层面，1 条。写使节、边报、贸易、和亲、战和；必须带“国家”。
@@ -126,7 +129,7 @@ const PRESET_DEFAULT = {
 {"NPC状态":{"具名":{"心情":"","位置":"","年龄":"","身份":"","当前所做":""}},"NPC事件":[{"事件名":"","角色":"","内容":"","进度":0,"伏笔":false}],"国家事件":[{"事件名":"","领域":"","内容":"","进度":0,"伏笔":false}],"邻国事件":[{"事件名":"","国家":"","领域":"","内容":"","进度":0,"伏笔":false}],"流言":[{"内容":"","伏笔":false}],"书信":[{"来源":"","内容":""}],"关系":[{"甲":"","乙":"","关系":""}],"伏笔":[{"内容":"","来源":"","已回收":false}]}
 
 【篇幅】
-每条 20-50 字，总 150-350 字。宁可少写，不要凑。`,
+每条 20-50 字；总字数以覆盖所有已记录人物为准，不设上限，宁可少写不要凑。`,
 
     '正常': `【定位】
 你是这个世界的起居注史官：既看殿上，也看殿外。根据本回正文，推演“已经发生的变化”和“正在酝酿的变化”，供作者续写。你不改写正文，不替角色做决定。
@@ -140,7 +143,7 @@ const PRESET_DEFAULT = {
 6. 国家事件和邻国事件是“国事/邦交”，不是 NPC 状态栏：不要写某人的心情、位置、当前所做。
 
 【模块手册】
-- NPC状态：本回有变化或值得续写的具名角色，3-5 人。每人写心情、位置、年龄、身份、当前所做；优先写与本回有关的人。
+- NPC状态：不设数量上限；只写本回有变化或值得续写的具名角色，已出场和没出场的都可以写。每人写心情、位置、年龄、身份、当前所做，不要为了凑数重写没变化的人。
 - NPC事件：角色个人线，1-3 条。至少 1 条来自本回未出场的 NPC；写他/她自己的目标、麻烦、动作，不要等主角召见才动。
 - 国家事件：朝廷/国家层面，至少 1 条。领域可写内政、军事、外交、灾异、朝议、礼制、刑狱、财政；写决策、执行、后果，不写某人的心情。
 - 邻国事件：外国/边境层面，至少 1 条。必须带“国家”，领域可写外交、边境、贸易、战争、和亲、使节；写对方朝廷或边关的动作。
@@ -154,7 +157,7 @@ const PRESET_DEFAULT = {
 {"NPC状态":{"具名":{"心情":"","位置":"","年龄":"","身份":"","当前所做":""}},"NPC事件":[{"事件名":"","角色":"","内容":"","进度":0,"伏笔":false}],"国家事件":[{"事件名":"","领域":"","内容":"","进度":0,"伏笔":false}],"邻国事件":[{"事件名":"","国家":"","领域":"","内容":"","进度":0,"伏笔":false}],"流言":[{"内容":"","伏笔":false}],"书信":[{"来源":"","内容":""}],"关系":[{"甲":"","乙":"","关系":""}],"伏笔":[{"内容":"","来源":"","已回收":false}]}
 
 【数量与篇幅】
-NPC状态 3-5 人；NPC事件 1-3 条；国家事件 1-2 条；邻国事件 1 条；流言 0-2 条；书信 0-1 封；关系 0-2 条；伏笔 0-2 条。每条 30-80 字，总 400-900 字。
+NPC状态不设上限（只写有变化/值得续写的人）；NPC事件 1-3 条；国家事件 1-2 条；邻国事件 1 条；流言 0-2 条；书信 0-1 封；关系 0-2 条；伏笔 0-2 条。每条 30-80 字；总字数以覆盖所有人和实际条目为准，不设上限。
 
 【示例】
 {"NPC状态":{"周彦之":{"心情":"疲惫","位置":"中书省","年龄":"31","身份":"中书舍人","当前所做":"草拟整顿太学诏书"}},"NPC事件":[{"事件名":"淑妃谋宠","角色":"淑妃","内容":"以赏菊为名邀圣上至御花园，暗令大公主偶然路过。","进度":40,"伏笔":false}],"国家事件":[{"事件名":"太学整饬","领域":"朝议","内容":"御史台请裁太学冗员，中书省拟诏，国子监上下震动。","进度":20,"伏笔":false}],"邻国事件":[{"事件名":"北狄互市","国家":"北狄","领域":"边境","内容":"北狄使节请求增开马市，边将疑其借机窥探军情。","进度":15,"伏笔":false}],"流言":[],"书信":[],"关系":[{"甲":"淑妃","乙":"沈微澜","关系":"暗斗"}],"伏笔":[{"内容":"圣上深夜独坐西阁，或有心事","来源":"流言","已回收":false}]}`,
@@ -173,7 +176,7 @@ NPC状态 3-5 人；NPC事件 1-3 条；国家事件 1-2 条；邻国事件 1 �
 8. 人名以世界书/正文为准；年龄根据身份、入宫年数、子女年龄等线索推测一个合理数字，不写“不详”，只增不减。
 
 【模块手册】
-- NPC状态：本回有变化的核心人物 + 幕后关键人物，5-8 人。每人写心情、位置、年龄、身份、当前所做；当前所做要具体到动作。
+- NPC状态：不设数量上限；写本回有变化的核心人物、幕后人物和值得续写的新人物。没出场的人可以写，但不要为了填满而重写所有人。
 - NPC事件：2-4 条个人线。至少 2 条来自未出场 NPC；每条写清动机、动作、阻力、下一步，不要只写结果。
 - 国家事件：1-2 条国家层面。领域：内政/军事/外交/灾异/朝议/礼制/刑狱/财政。写政策或事件的因果链，不写某人的心情。
 - 邻国事件：1-2 条外国/边境。必须带“国家”；领域：外交/边境/贸易/战争/和亲/使节。写对方朝廷的算计与边关的反应。
@@ -187,7 +190,7 @@ NPC状态 3-5 人；NPC事件 1-3 条；国家事件 1-2 条；邻国事件 1 �
 {"NPC状态":{"具名":{"心情":"","位置":"","年龄":"","身份":"","当前所做":""}},"NPC事件":[{"事件名":"","角色":"","内容":"","进度":0,"伏笔":false}],"国家事件":[{"事件名":"","领域":"","内容":"","进度":0,"伏笔":false}],"邻国事件":[{"事件名":"","国家":"","领域":"","内容":"","进度":0,"伏笔":false}],"流言":[{"内容":"","伏笔":false}],"书信":[{"来源":"","内容":""}],"关系":[{"甲":"","乙":"","关系":""}],"伏笔":[{"内容":"","来源":"","已回收":false}]}
 
 【数量与篇幅】
-NPC状态 5-8 人；NPC事件 2-4 条；国家事件 1-2 条；邻国事件 1-2 条；流言 0-3 条；书信 0-2 封；关系 0-3 条；伏笔 0-3 条。每条 40-120 字，总 700-1600 字。不要为凑字数灌水。
+NPC状态不设上限（只写有变化/值得续写的人）；NPC事件 2-4 条；国家事件 1-2 条；邻国事件 1-2 条；流言 0-3 条；书信 0-2 封；关系 0-3 条；伏笔 0-3 条。每条 40-120 字；总字数以覆盖所有人和实际条目为准，不设上限，不要为凑字数灌水。
 
 【示例】
 {"NPC状态":{"周彦之":{"心情":"疲惫","位置":"中书省","年龄":"31","身份":"中书舍人","当前所做":"草拟整顿太学诏书，暗中删去牵连旧友的一条"}},"NPC事件":[{"事件名":"淑妃谋宠","角色":"淑妃","内容":"以赏菊为名邀圣上至御花园，暗令大公主偶然路过；她真正想要的是让皇后先出手。","进度":40,"伏笔":true},{"事件名":"太学暗账","角色":"国子监祭酒","内容":"连夜烧掉三箱荐书，怕御史台从太学查到自家门生。","进度":25,"伏笔":true}],"国家事件":[{"事件名":"太学整饬","领域":"朝议","内容":"御史台请裁太学冗员，中书省拟诏，国子监上下震动；清流与旧党都在抢名单。","进度":20,"伏笔":false}],"邻国事件":[{"事件名":"北狄互市","国家":"北狄","领域":"边境","内容":"北狄使节请求增开马市，边将疑其借机窥探军情；使团里混着一名会说京话的书记官。","进度":15,"伏笔":true}],"流言":[{"内容":"御膳房有人说，圣上昨夜没动那道莲子羹。","伏笔":false}],"书信":[{"来源":"沈微澜","内容":"臣妾安好，勿念。唯长秋宫炭火不足，不知可否请内务府匀些。"}],"关系":[{"甲":"淑妃","乙":"沈微澜","关系":"暗斗"}],"伏笔":[{"内容":"圣上深夜独坐西阁，或有心事","来源":"流言","已回收":false}]}`
@@ -213,6 +216,7 @@ const state = {
     searchQuery: '',
     searchTimer: 0,
     autoStartId: -1,
+    initialTried: false,
     ui: {
         tab: 'NPC状态',
         settingsTab: 'basic',
@@ -328,23 +332,55 @@ function isBlacklisted(name) {
     return ['圣上', '陛下', '我', '朕'].includes(n);
 }
 
-function getUserDisplayName() {
+function getUserNames() {
+    const now = Date.now();
+    if (now - userNamesCache.time < 1200) return userNamesCache.names;
+    const names = [];
+    const add = value => {
+        const name = cleanName(value || '');
+        if (!name || name.includes('{{') || name === CHARACTER_NAME) return;
+        if (!names.includes(name)) names.push(name);
+    };
     try {
         const ctx = typeof getContext === 'function' ? getContext() : null;
-        const raw = ctx && (ctx.name1 || ctx.user_name || ctx.userName || ctx.persona);
-        const name = cleanName(raw || '');
-        if (name && !name.includes('{{')) return name;
+        if (ctx) {
+            add(ctx.name1);
+            add(ctx.user_name);
+            add(ctx.userName);
+            add(ctx.persona);
+            add(ctx.name);
+            if (ctx.user && typeof ctx.user === 'object') add(ctx.user.name);
+        }
     } catch (e) { /* ignore */ }
-    return '{{user}}';
+    try {
+        const win = getWin();
+        add(win.name1);
+        add(win.user_name);
+    } catch (e) { /* ignore */ }
+    try {
+        // 第一条用户消息的名字最可靠；有些酒馆 getContext().name1 仍返回 {{user}}。
+        const msgs = getChatMessages('0-10');
+        if (Array.isArray(msgs)) {
+            msgs.forEach(msg => {
+                if (msg && (msg.is_user || msg.role === 'user')) add(msg.name);
+            });
+        }
+    } catch (e) { /* ignore */ }
+    if (names.length) userNamesCache = { time: now, names };
+    return names;
+}
+
+function getUserDisplayName() {
+    const names = getUserNames();
+    return names[0] || '{{user}}';
 }
 
 function isLeadName(name) {
     const n = cleanName(name);
     if (!n) return false;
     if (n === CHARACTER_NAME) return true;
-    if (n.includes('{{user}}')) return true;
-    const user = getUserDisplayName();
-    return !!user && n === user;
+    if (n.toLowerCase().includes('{{user}}')) return true;
+    return getUserNames().some(user => n === user || n.startsWith(user + '·'));
 }
 
 function getProgressNum(item) {
@@ -375,6 +411,11 @@ function normalizeEvent(event) {
     const updated = toInt(out.更新回合, 0);
     out.更新回合 = updated > 0 ? updated : 0;
     return out;
+}
+
+function eventLooksFinished(event) {
+    const text = [event && event.事件名, event && event.内容, event && event.结果].filter(Boolean).join(' ');
+    return /(已结束|已收场|已了结|尘埃落定|伏诛|事败|功成|已死|已退位|已和离|已失势|已结)/.test(text);
 }
 
 function eventKey(event) {
@@ -741,6 +782,9 @@ function normalizeData(raw) {
     out.孕事 = (Array.isArray(out.孕事) ? out.孕事 : [])
         .map(item => normalizePregnancy(item, 0))
         .filter(Boolean);
+    out.孕事子女 = (Array.isArray(out.孕事子女) ? out.孕事子女 : [])
+        .map(item => normalizeChild(item, 0))
+        .filter(Boolean);
 
     out.子嗣 = normalizeHeir(out.子嗣, 0);
 
@@ -761,10 +805,10 @@ function hasContent(fresh) {
     if (isPlainObject(fresh.时令) && Object.values(fresh.时令).some(value => value)) return true;
     if (isPlainObject(fresh.子嗣)) {
         const user = fresh.子嗣.用户 || {};
-        if (user.本回次数 || user.受孕判定 || user.孕期月 || user.状态 && user.状态 !== '未孕') return true;
+        if (user.本回次数 || user.内射次数 || user.受孕判定 || user.孕期月 || user.状态 && user.状态 !== '未孕') return true;
         if (Array.isArray(fresh.子嗣.子女) && fresh.子嗣.子女.length) return true;
     }
-    return ['NPC事件', '国家事件', '邻国事件', '流言', '书信', '关系', '伏笔', '孕事', '奏折', '秘辛', '斗争']
+    return ['NPC事件', '国家事件', '邻国事件', '流言', '书信', '关系', '伏笔', '孕事', '孕事子女', '奏折', '秘辛', '斗争']
         .some(key => Array.isArray(fresh[key]) && fresh[key].length > 0);
 }
 
@@ -800,12 +844,13 @@ function normalizeSettings(raw) {
     out.enabled = out.enabled !== false;
     out.mode = out.mode === 'main' ? 'main' : 'sub';
     out.trigger = out.trigger === 'manual' ? 'manual' : 'auto';
+    out.initialFill = out.initialFill === 'manual' ? 'manual' : 'auto';
     out.presetName = String(out.presetName || '正常');
     out.subApiUrl = String(out.subApiUrl || '').trim();
     out.subApiKey = String(out.subApiKey || '').trim();
     out.subApiModel = String(out.subApiModel || '').trim();
     out.temperature = clamp(Number(out.temperature) || 0, 0, 2);
-    out.maxTokens = clamp(toInt(out.maxTokens, 3200), 200, 8000);
+    out.maxTokens = clamp(toInt(out.maxTokens, 4000), 200, 8000);
     out.debug = isTrue(out.debug);
     out.theme = THEMES[out.theme] ? out.theme : 'A';
     ['injectEvents', 'injectNpc', 'injectRumors', 'injectLetters', 'injectForeshadow', 'injectRelations', 'injectTimeline', 'pregnancyModule', 'heirModule', 'foreshadowAi', 'foreshadowUser', 'leadGroup', 'memorialModule', 'secretModule', 'calendarModule', 'struggleModule'].forEach(key => {
@@ -814,6 +859,7 @@ function normalizeSettings(raw) {
     out.ballSize = clamp(toInt(out.ballSize, 50), 36, 84);
     out.ballStyle = ['compass','lantern','seal','mirror','bamboo'].includes(out.ballStyle) ? out.ballStyle : 'compass';
     out.ballImage = typeof out.ballImage === 'string' && /^data:image\//.test(out.ballImage) ? out.ballImage.slice(0, 2000000) : '';
+    out.panelImage = typeof out.panelImage === 'string' && /^data:image\//.test(out.panelImage) ? out.panelImage.slice(0, 3000000) : '';
     out.apiProfiles = normalizeApiProfiles(out.apiProfiles);
     out.apiProfileId = String(out.apiProfileId || '').trim();
     if (out.apiProfileId && !out.apiProfiles.some(item => item.id === out.apiProfileId)) out.apiProfileId = '';
@@ -1093,6 +1139,7 @@ function mergeEvents(oldList, newList, round) {
         if (!old) {
             event.回合 = round;
             event.更新回合 = round;
+            if (eventLooksFinished(event)) event.进度 = 100;
             map.set(key, event);
             return;
         }
@@ -1109,6 +1156,7 @@ function mergeEvents(oldList, newList, round) {
         } else {
             merged.进度 = Math.max(oldProgress, getProgressNum(event));
         }
+        if (eventLooksFinished(merged)) merged.进度 = 100;
         map.set(key, merged);
     });
     return Array.from(map.values());
@@ -1418,8 +1466,29 @@ function normalizeHeir(raw, round) {
         用户: normalizeHeirUser(obj.用户 || obj.user || {}, round),
         子女: (Array.isArray(obj.子女) ? obj.子女 : [])
             .map(item => normalizeChild(item, round))
-            .filter(Boolean)
+            .filter(item => item && (!item.生母 || isLeadName(item.生母)))
     };
+}
+
+function mergePregnancyChildren(oldList, newList, round) {
+    const map = new Map();
+    (Array.isArray(oldList) ? oldList : []).forEach(item => {
+        const record = normalizeChild(item, 0);
+        if (record) map.set(record.姓名 + '|' + (record.生母 || ''), record);
+    });
+    (Array.isArray(newList) ? newList : []).forEach(item => {
+        const record = normalizeChild(item, round);
+        if (!record) return;
+        const key = record.姓名 + '|' + (record.生母 || '');
+        const old = map.get(key);
+        if (!old) {
+            record.回合 = record.回合 || round;
+            map.set(key, record);
+        } else {
+            Object.assign(old, record);
+        }
+    });
+    return Array.from(map.values());
 }
 
 function mergeHeir(oldHeir, freshHeir, round) {
@@ -1539,6 +1608,7 @@ function mergeGroupData(oldData, fresh) {
     out.关系 = mergeRelations(out.关系, fresh.关系);
     out.伏笔 = mergeForeshadow(out.伏笔, fresh.伏笔);
     out.孕事 = mergePregnancies(out.孕事, fresh.孕事, round);
+    out.孕事子女 = mergePregnancyChildren(out.孕事子女, fresh.孕事子女, round);
     if (getSettings().pregnancyModule) {
         out.孕事 = derivePregnancies(out.NPC状态, out.孕事, round);
     }
@@ -1593,7 +1663,7 @@ function buildEventContext() {
     const data = getGroupData() || {};
     const lines = [];
     const push = line => {
-        if (lines.length >= 60) return;
+        if (lines.length >= 160) return;
         if (line && !lines.includes(line)) lines.push(line);
     };
 
@@ -1698,16 +1768,19 @@ function buildExtraModulesPrompt() {
     if (!s.secretModule) off.push('秘辛');
     if (!s.calendarModule) off.push('时令');
     if (!s.struggleModule) off.push('斗争');
+    if (!s.pregnancyModule) off.push('孕事/孕事子女');
     if (!s.heirModule) off.push('子嗣');
 
     return `\n\n【扩展模块：和上面的 JSON 合并，不是另起一个对象】
 - 奏折（1-3 条）：朝堂公文，不是普通事件。写清标题、上奏人、衙门、事由、主张、反对、状态（待议/留中/准奏/驳回/已结）。没有就写空数组。
 - 秘辛（0-2 条）：只记值得藏的 secret。内容、涉及谁、证据/把柄。知情者写“谁、知道多少”（全知/部分/怀疑/只知片段）；不知情者写“谁还不知道”。**李承璟和{{user}}也可以知道或不知道，照实写进知情者/不知情者，不要漏掉他们。**
 - 流言（0-2 条）：除了内容，还要写来源人物、传播链（谁传给谁、版本变成什么）、可信度（真/半真/假/未知）。传播链 2-4 人即可。
+- 孕事：只记后妃/其他 NPC 的有孕月份与状态；{{user}} 的孕事写在“子嗣.用户”里，不要混进孕事。
 - 时令：只有正文出现明确日期、节气、节日、时辰时才更新。写年号、年、月、日、节气、节日、时辰、备注；没有就留空对象。
 - 斗争（0-2 条）：宫斗或政斗。只在有明确动机、利益冲突、行动条件时记录；不要每回硬造。写类型（宫斗/政斗）、事件名、发起者、目标、手段、烈度（低/中/高）、阶段（策划/执行/调查/反制/收场）、证据、知情者、进度、结果。结果开放，不保证成功；不替{{user}}决定中计、受伤、失宠或站队；信息有限，不知道的人不要写成知道。
-- 子嗣（仅在模块开启时）：只写{{user}}相关。用户字段：本回次数（只写本回新增，累计由程序加）、受孕判定（未定/可能/已确认/未受孕）、孕期月（0-10）、状态（未孕/有孕/临盆/已生产/小产）、发现（谁逐渐知道、知道多少）、备注。只做记录，不写露骨过程，不替{{user}}决定感受、是否留下或是否生产。
-- 子女：只在出生后写。姓名、性别、身份（太子/太女/王爷/公主/皇子/皇女）、生母、排行、出生、状态（在世/夭折/过继）、备注；不要提前写未出生孩子的性别和封号。
+- 子嗣（仅在模块开启时）：{{user}} 是玩家，在酒馆里会自动替换成人设名字；不管正文用什么名字，子嗣.用户 始终是玩家本人。模块开启时这个对象必须出现；没有变化就照抄当前累计/孕期/状态，不要漏掉。
+- 用户字段：本回次数（只写本回新增，累计由程序加）、受孕判定（未定/可能/已确认/未受孕）、孕期月（0-10）、状态（未孕/有孕/临盆/已生产/小产）、发现（谁逐渐知道、知道多少）、备注。只做记录，不写露骨过程，不替{{user}}决定感受、是否留下或是否生产。
+- 子女：只写{{user}}所出的孩子，只在出生后写。字段：姓名、性别、身份（太子/太女/王爷/公主/皇子/皇女）、生母、排行、出生、状态（在世/夭折/过继）、备注；不要提前写未出生孩子的性别和封号。后妃所出的孩子写到“孕事子女”，不要写进子嗣。
   · 孕月建议只作参考：1-3 月防不稳，4-6 月显怀与安胎，7-8 月备产，9-10 月临盆；不要写成医学诊断。
   · 宫斗烈度：低=口舌、份例、礼仪刁难；中=收买宫人、造谣、栽赃；高=皇嗣、巫蛊、谋逆，必须有充分铺垫。
   · 政斗烈度：低=朝议分歧、考核、调任；中=弹劾、财政亏空、边境摩擦；高=战争、谋逆、继承危机，必须符合国力与权限。
@@ -1717,6 +1790,7 @@ function buildExtraModulesPrompt() {
 - 角色已经走到终点（死亡、退位、登基、成婚、失势、离场、结局已定）就保持终点状态，不得写回中途，不得让他重新经历已经走完的剧情。
 - 事件进度已经 100、已收场或已结束，就只写余波、后果和旁人反应；不要换一个名字重新开局，也不要把终局内容改回进行中。
 - 同一事件继续用同一个事件名；进度只增不减。已经完成的伏笔必须回收，不能重新变成未解。
+- 剧情已经走完的 NPC事件 / 国家事件 / 邻国事件，进度必须写 100，并写清结果；不要留在进行中。
 - 如果正文是回忆/倒叙，只把它当回忆，不改当前时间线的终点状态。
 
 【扩展字段】
@@ -1725,6 +1799,7 @@ function buildExtraModulesPrompt() {
 "流言":[{"内容":"","来源人物":"","传播链":[{"人物":"","版本":""}],"可信度":"未知","伏笔":false}],
 "时令":{"年号":"","年":0,"月":0,"日":0,"节气":"","节日":"","时辰":"","备注":""},
 "斗争":[{"类型":"宫斗","事件名":"","发起者":"","目标":"","手段":"","烈度":"低","阶段":"策划","证据":"","知情者":[{"人物":"","程度":"部分"}],"进度":0,"结果":""}],
+"孕事子女":[{"姓名":"","性别":"男/女","身份":"","生母":"","排行":1,"出生":"","状态":"在世","备注":""}],
 "子嗣":{"用户":{"本回次数":0,"受孕判定":"未定","孕期月":0,"状态":"未孕","发现":[{"人物":"","程度":""}],"备注":""},"子女":[{"姓名":"","性别":"男","身份":"皇子","生母":"","排行":1,"出生":"","状态":"在世","备注":""}]}
 ${off.length ? '【本回关闭】' + off.join('、') + ' 对应字段留空，不要输出。' : ''}`;
 }
@@ -1852,13 +1927,15 @@ function buildPregnancyPrompt() {
     if (!getSettings().pregnancyModule) return '';
     return `
 
-【后妃孕事】（本模块已开启，只记录有孕的后妃；每个有孕后妃必须出现在这里，不能只写在 NPC状态）
+【后妃孕事与子女】（本模块已开启，只记录其他后妃/ NPC；{{user}} 的孕事在“子嗣.用户”，不要混进来）
 - 只写身份为后妃、嫔御、贵人、才人、皇后等的具名女子；不要写{{user}}、李承璟、陛下、圣上。
 - 字段：人物、孕月（1-10 的整数）、状态（稳定/不稳/临盆/小产/已生产 等）、备注（可选）。
 - 已生产、小产、流产的孕事要写清楚状态，程序会自动归入“已结束”。
+- 后妃生产后，子女写到“孕事子女”：姓名、性别、身份（太子/太女/王爷/公主/皇子/皇女）、生母、排行、出生、状态；不要写进“子嗣”。
 - 没有孕事就输出空数组，不要编造。
 格式：
-"孕事": [{"人物":"", "孕月":0, "状态":"", "备注":""}]`;
+"孕事": [{"人物":"", "孕月":0, "状态":"", "备注":""}],
+"孕事子女": [{"姓名":"","性别":"男/女","身份":"","生母":"","排行":1,"出生":"","状态":"在世","备注":""}]`;
 }
 
 async function generateSub(settings, options) {
@@ -1869,18 +1946,30 @@ async function generateSub(settings, options) {
     const baseline = opts.baseline || getGroupData() || {};
     const messageId = opts.messageId !== undefined ? opts.messageId : getLatestAssistantId();
     let ctx = '';
-    try {
-        const msg = messageId >= 0 ? getChatMessages(messageId)[0] : null;
-        if (msg && msg.role === 'assistant') {
-            ctx = stripGroupBlock(msg.message);
-        }
-    } catch (e) { /* ignore */ }
+    if (opts.initial) {
+        try {
+            const last = getLastMessageId();
+            const msgs = last >= 0 ? getChatMessages('0-' + last) : [];
+            ctx = (Array.isArray(msgs) ? msgs : []).slice(0, 12).map(m => {
+                const who = m.name || (m.role === 'user' || m.is_user ? getUserDisplayName() : 'assistant');
+                return `${who}：${stripGroupBlock(m.message || '')}`;
+            }).join('\n');
+        } catch (e) { /* ignore */ }
+    } else {
+        try {
+            const msg = messageId >= 0 ? getChatMessages(messageId)[0] : null;
+            if (msg && msg.role === 'assistant') {
+                ctx = stripGroupBlock(msg.message);
+            }
+        } catch (e) { /* ignore */ }
+    }
 
-    const baselineText = JSON.stringify(baseline, null, 2).slice(0, 10000);
+    const baselineText = JSON.stringify(baseline, null, 2).slice(0, 18000);
     const prompt = wrapSubPrompt(core)
         + buildPregnancyPrompt()
+        + (opts.initial ? '\n\n【开局补全】这是第一次补全：结合世界书、人设、开场白和最初几层对话，建立所有已出现和世界书提到的 NPC、国家事件、时令与线索；不要只写眼前几个人。' : '')
         + `\n\n【当前群像状态】\n` + baselineText
-        + `\n\n【本回正文】\n` + ctx.slice(0, 4000);
+        + `\n\n【本回正文】\n` + ctx.slice(0, 12000);
 
     const config = {
         user_input: prompt,
@@ -1934,7 +2023,6 @@ async function handleAiMessage(messageId, type) {
     const s = getSettings();
     if (!s.enabled) return;
     if (type === 'quiet' || type === 'extension') return;
-    if (s.trigger !== 'auto') return;
 
     const gen = state.gen;
     let msg = null;
@@ -1943,6 +2031,15 @@ async function handleAiMessage(messageId, type) {
     // 打开角色卡/切换聊天时，已有的开场白和旧楼层不自动推演；
     // 只有载入后新生成的楼层，或手动点“生成”，才会调用 API。
     if (messageId <= state.autoStartId) return;
+
+    const noData = !getGroupData();
+    const initialWindow = noData && !state.initialTried && messageId <= 3;
+    if (initialWindow) {
+        if (s.initialFill !== 'auto') return;
+        state.initialTried = true;
+    } else if (s.trigger !== 'auto') {
+        return;
+    }
 
     await advanceYearFromMessage(messageId, msg.message);
 
@@ -1962,12 +2059,13 @@ async function handleAiMessage(messageId, type) {
     state.busy = true;
     setBusyUI(true);
     try {
-        const parsed = await generateSub(s, { messageId });
+        const parsed = await generateSub(s, { messageId, initial: initialWindow });
         if (parsed && parsed.__error) {
             logEntry.标签 = s.mode === 'main' ? '主API失败' : '副API失败';
             logEntry.原始 = parsed.__raw || '';
             logEntry.结果 = parsed.__error;
             appendLog(logEntry);
+            if (initialWindow) { state.initialTried = false; updateInitialButton(); }
             return;
         }
         logEntry.标签 = '解析成功';
@@ -1986,6 +2084,7 @@ async function handleAiMessage(messageId, type) {
     if (!hasContent(fresh)) {
         logEntry.结果 = '没有可记录的变化';
         appendLog(logEntry);
+        if (initialWindow) { state.initialTried = false; updateInitialButton(); }
         return;
     }
 
@@ -2487,7 +2586,21 @@ const CSS = `
     font-weight: 700;
     white-space: nowrap;
 }
-.lx-icon-btn {
+.lx-initial-btn {
+    display: none;
+    margin-left: auto;
+    margin-right: 6px;
+    padding: 4px 9px;
+    border: 1px solid var(--lx-border);
+    border-radius: var(--lx-btn-radius, 2px);
+    background: var(--lx-btn-bg, transparent);
+    color: var(--lx-accent, var(--lx-gold));
+    font-family: inherit;
+    font-size: 10px;
+    letter-spacing: 1px;
+    cursor: pointer;
+}
+.lx-initial-btn.show { display: inline-flex; align-items: center; }.lx-icon-btn {
     flex: 0 0 auto;
     width: 36px;
     height: 36px;
@@ -3112,7 +3225,21 @@ const CSS = `
     letter-spacing: 4px;
     line-height: 1.4;
 }
-.lx-icon-btn {
+.lx-initial-btn {
+    display: none;
+    margin-left: auto;
+    margin-right: 6px;
+    padding: 4px 9px;
+    border: 1px solid var(--lx-border);
+    border-radius: var(--lx-btn-radius, 2px);
+    background: var(--lx-btn-bg, transparent);
+    color: var(--lx-accent, var(--lx-gold));
+    font-family: inherit;
+    font-size: 10px;
+    letter-spacing: 1px;
+    cursor: pointer;
+}
+.lx-initial-btn.show { display: inline-flex; align-items: center; }.lx-icon-btn {
     width: 30px;
     height: 30px;
     border-radius: 2px;
@@ -3474,6 +3601,7 @@ const SHELL_HTML = `
     <div id="lx-panel" role="dialog" aria-modal="true" aria-label="群像志">
         <div class="lx-header">
             <span class="lx-title">群 像 志</span>
+            <button type="button" class="lx-initial-btn" data-action="initial-fill" aria-label="补全开局">补全</button>
             <button type="button" class="lx-icon-btn" data-action="close" aria-label="关闭">×</button>
         </div>
         <div class="lx-tabs" role="tablist">
@@ -3631,7 +3759,17 @@ function readStTheme() {
 
 function applyTheme() {
     if (!state.root) return;
-    const theme = getSettings().theme === 'ST' ? readStTheme() : (THEMES[getSettings().theme] || THEMES.A);
+    const s = getSettings();
+    const themeKey = s.theme;
+    const theme = themeKey === 'ST' ? readStTheme() : (THEMES[themeKey] || THEMES.A);
+    let bgImage = theme.image || 'none';
+    if (s.panelImage) {
+        const light = themeKey === 'A' || themeKey === 'E';
+        const shade = light
+            ? 'linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,.30))'
+            : 'linear-gradient(180deg, rgba(0,0,0,.24), rgba(0,0,0,.34))';
+        bgImage = `${shade}, url("${s.panelImage}")`;
+    }
     const map = {
         '--lx-bg': theme.bg,
         '--lx-bg-solid': theme.solid,
@@ -3644,7 +3782,7 @@ function applyTheme() {
         '--lx-card-bg': theme.card,
         '--lx-event-bg': theme.event,
         '--lx-shadow': theme.shadow,
-        '--lx-bg-image': theme.image || 'none',
+        '--lx-bg-image': bgImage,
         '--lx-panel-radius': theme.panelRadius || '4px',
         '--lx-btn-bg': theme.btnBg || 'rgba(255,255,255,.08)',
         '--lx-btn-color': theme.btnColor || theme.text,
@@ -4292,11 +4430,13 @@ function renderDebugLogs() {
     </div>`).join('');
 }
 
-function renderPregnancy(list) {
+function renderPregnancy(list, children) {
     const rows = (Array.isArray(list) ? list : [])
         .map((item, index) => ({ item, index }))
         .filter(({ item }) => !isBlacklisted(item.人物) && textMatch(item.人物, item.状态, item.备注));
-    if (!rows.length) {
+    const kids = (Array.isArray(children) ? children : [])
+        .filter(item => textMatch(item.姓名, item.性别, item.身份, item.生母, item.状态, item.备注));
+    if (!rows.length && !kids.length) {
         setPanel('孕事', emptyText('暂无孕事') + '<div style="text-align:center;margin-top:10px;"><button type="button" class="lx-mini-btn" data-action="preg-add">+ 添加孕事</button></div>');
         return;
     }
@@ -4304,15 +4444,25 @@ function renderPregnancy(list) {
         if (a.item.已结束 !== b.item.已结束) return a.item.已结束 ? 1 : -1;
         return (b.item.孕月 || 0) - (a.item.孕月 || 0);
     });
-    const html = rows.map(({ item, index }) => {
+    let html = rows.map(({ item, index }) => {
         const cls = item.已结束 ? 'lx-preg-card ended' : 'lx-preg-card';
         return `<div class="${cls}">
             <div><span class="lx-preg-name">${escapeHtml(item.人物)}</span><span class="lx-preg-month">${item.孕月 ? '孕 ' + item.孕月 + ' 月' : '孕月未录'}</span></div>
             <div class="lx-preg-status">${escapeHtml(item.状态 || '有孕')}${item.已结束 ? ' · 已结束' : ''}</div>
             ${item.备注 ? `<div class="lx-preg-note">${escapeHtml(item.备注)}</div>` : ''}
+            <div class="lx-preg-note">${escapeHtml(pregnancyTip(item.孕月))}</div>
             <div style="text-align:right;margin-top:6px;"><button type="button" class="lx-mini-btn" data-action="preg-edit" data-idx="${index}">改</button></div>
         </div>`;
     }).join('');
+    if (kids.length) {
+        html += `<div class="lx-npc-group-title">后妃所出子女 · ${kids.length}</div>`;
+        html += kids.map(item => `<div class="lx-heir-child">
+            <div class="lx-heir-child-head"><span class="lx-heir-child-name">${escapeHtml(item.姓名)}</span><span class="lx-heir-child-title">${escapeHtml(item.身份 || (item.性别 === '女' ? '皇女' : '皇子'))}</span></div>
+            <div class="lx-heir-line"><b>性别</b>${escapeHtml(item.性别)}　<b>生母</b>${escapeHtml(item.生母 || '不详')}　<b>排行</b>${item.排行 ? '第' + item.排行 : '未序'}</div>
+            <div class="lx-heir-line"><b>出生</b>${escapeHtml(item.出生 || '未记')}　<b>状态</b>${escapeHtml(item.状态 || '在世')}</div>
+            ${item.备注 ? `<div class="lx-preg-note">${escapeHtml(item.备注)}</div>` : ''}
+        </div>`).join('');
+    }
     setPanel('孕事', html + '<div style="margin-top:10px;"><button type="button" class="lx-mini-btn" data-action="preg-add">+ 添加孕事</button></div>');
 }
 
@@ -4340,7 +4490,7 @@ function renderHeir(heir) {
     if (userMatch) {
         const known = user.发现 || [];
         html += `<div class="lx-heir-user">
-            <div class="lx-heir-title">主线 · {{user}}</div>
+            <div class="lx-heir-title">主线 · ${escapeHtml(getUserDisplayName())}</div>
             <div class="lx-heir-stats">
                 <div><span>累计次数</span><b>${user.内射次数 || 0}</b></div>
                 <div><span>本回</span><b>${user.本回次数 ? '+' + user.本回次数 : '—'}</b></div>
@@ -4402,13 +4552,28 @@ function updateTabCounts(data) {
         '时令': data.时令 && (data.时令.月 || data.时令.节气) ? 1 : 0,
         '关系图': (data.关系 || []).length,
         '伏笔': (data.伏笔 || []).filter(f => !f.已回收).length,
-        '孕事': (data.孕事 || []).filter(p => !p.已结束).length,
+        '孕事': (data.孕事 || []).filter(p => !p.已结束).length + (data.孕事子女 || []).length,
         '子嗣': (data.子嗣 && data.子嗣.子女 ? data.子嗣.子女.length : 0) + (data.子嗣 && data.子嗣.用户 && /有孕|临盆/.test(data.子嗣.用户.状态 || '') ? 1 : 0)
     };
     Object.entries(state.refs.tabs || {}).forEach(([name, tab]) => {
         const num = tab.querySelector('.lx-tab-num');
         if (num) num.textContent = counts[name] ? String(counts[name]) : '';
     });
+}
+
+function isInitialFillAvailable() {
+    if (state.initialTried) return false;
+    try { if (getGroupData()) return false; } catch (e) { /* ignore */ }
+    try {
+        const last = getLastMessageId();
+        return last >= 0 && last <= 3;
+    } catch (e) { return false; }
+}
+
+function updateInitialButton() {
+    const btn = state.refs.initial;
+    if (!btn) return;
+    btn.classList.toggle('show', isInitialFillAvailable());
 }
 
 function renderAll() {
@@ -4427,10 +4592,11 @@ function renderAll() {
     renderTimeline(data, getSettings().timelineRange);
     renderRelations(data.关系, getSettings().relationView);
     renderForeshadow(data.伏笔);
-    renderPregnancy(data.孕事);
+    renderPregnancy(data.孕事, data.孕事子女);
     renderHeir(data.子嗣);
     updateModuleVisibility();
     updateTabCounts(data);
+    updateInitialButton();
 }
 
 
@@ -4509,6 +4675,14 @@ function buildSettingsHTML() {
                 </div>
             </div>
 
+            <div class="lx-field">
+                <label class="lx-field-label">开局补全</label>
+                <div class="lx-radio-group">
+                    ${radioRow('lx-initial', 'auto', s.initialFill, '自动补全')}
+                    ${radioRow('lx-initial', 'manual', s.initialFill, '手动补全')}
+                </div>
+                <div class="lx-field-hint">第一次对话时自动读取开局上下文补一次；手动则在标题右侧出现「补全」按钮，只在第一条消息附近显示。</div>
+            </div>
             <div class="lx-field">
                 <label class="lx-field-label">温度</label>
                 <div class="lx-range-row">
@@ -4632,6 +4806,16 @@ function buildSettingsHTML() {
             <div class="lx-field">
                 <label class="lx-field-label">配色方案</label>
                 <div class="lx-theme-grid">${themeItems}</div>
+            </div>
+            <div class="lx-field">
+                <label class="lx-field-label">面板背景图</label>
+                <div class="lx-inline">
+                    <label class="lx-mini-btn" style="cursor:pointer;">上传背景
+                        <input type="file" id="lx-panel-file" accept="image/*" style="display:none;">
+                    </label>
+                    <button type="button" class="lx-mini-btn" data-action="panel-image-reset">恢复主题背景</button>
+                </div>
+                <div class="lx-field-hint">支持 PNG/JPG/WebP，只存本机；会叠在主题色之上，文字仍可读。</div>
             </div>
             <div class="lx-field">
                 <label class="lx-field-label">悬浮球外观</label>
@@ -4828,6 +5012,7 @@ function saveSettingsFromForm() {
         enabled: radio('input[name="lx-enabled"]') !== 'false',
         mode: radio('input[name="lx-mode"]') === 'sub' ? 'sub' : 'main',
         trigger: radio('input[name="lx-trigger"]') === 'manual' ? 'manual' : 'auto',
+        initialFill: radio('input[name="lx-initial"]') === 'manual' ? 'manual' : 'auto',
         presetName,
         subApiUrl: val('#lx-api-url').trim(),
         subApiKey: val('#lx-api-key').trim(),
@@ -5238,6 +5423,20 @@ function deleteApiProfile() {
     toast('success', '已删除');
 }
 
+async function initialFill() {
+    if (!isInitialFillAvailable()) {
+        toast('warning', '当前不是第一条消息，或已有群像数据');
+        return;
+    }
+    state.initialTried = true;
+    updateInitialButton();
+    await manualGenerate({ initial: true });
+    if (!getGroupData() && !state.busy) {
+        state.initialTried = false;
+        updateInitialButton();
+    }
+}
+
 /* ------------------------------------------------------------------ */
 /* 事件委托                                                           */
 /* ------------------------------------------------------------------ */
@@ -5261,6 +5460,9 @@ async function handleAction(action, element) {
             return;
         case 'gen':
             await manualGenerate();
+            return;
+        case 'initial-fill':
+            await initialFill();
             return;
         case 'reroll':
             await rerollGroup();
@@ -5316,6 +5518,11 @@ async function handleAction(action, element) {
             }
             return;
         }
+        case 'panel-image-reset':
+            saveSettings({ panelImage: '' });
+            applyTheme();
+            toast('success', '已恢复主题背景');
+            return;
         case 'ball-image-reset':
             saveSettings({ ballImage: '' });
             applyBallAppearance();
@@ -5457,6 +5664,23 @@ function onChange(event) {
     if (target.id === 'lx-model-list') {
         const input = state.refs.settings.querySelector('#lx-api-model');
         if (input) input.value = target.value;
+    }
+    if (target.id === 'lx-panel-file') {
+        const file = target.files && target.files[0];
+        if (!file) return;
+        if (!/^image\//.test(file.type)) { toast('warning', '请选择图片文件'); return; }
+        if (file.size > 2 * 1024 * 1024) { toast('warning', '背景图太大，请小于 2MB'); return; }
+        const Reader = (state.win && state.win.FileReader) || FileReader;
+        const reader = new Reader();
+        reader.onload = () => {
+            const result = String(reader.result || '');
+            if (!/^data:image\//.test(result)) return;
+            saveSettings({ panelImage: result });
+            applyTheme();
+            toast('success', '面板背景已更新');
+        };
+        reader.readAsDataURL(file);
+        return;
     }
     if (target.id === 'lx-ball-file') {
         const file = target.files && target.files[0];
@@ -5779,6 +6003,8 @@ function bindTavernEvents() {
         state.gen++;
         state.processed.clear();
         state.pending = null;
+        state.initialTried = false;
+        userNamesCache = { time: 0, names: [] };
         state.searchQuery = '';
         const search = state.shadow && state.shadow.querySelector('#lx-search-input');
         if (search) search.value = '';
