@@ -1,4 +1,4 @@
-const VERSION = '0.1.9';
+const VERSION = '0.2.0';
 let userNamesCache = { time: 0, names: [] };
 const HOST_ID = 'lx-group-host';
 const LEGACY_IDS = ['lx-ball', 'lx-panel', 'lx-mask', 'lx-settings', 'lx-group-style'];
@@ -434,7 +434,18 @@ function similarText(a, b) {
     const y = normalizedText(b);
     if (!x || !y) return false;
     if (x === y) return true;
-    return x.length >= 12 && y.length >= 12 && (x.includes(y) || y.includes(x));
+    if (x.length >= 10 && y.length >= 10 && (x.includes(y) || y.includes(x))) return true;
+    if (x.length < 6 || y.length < 6) return false;
+    const grams = text => {
+        const set = new Set();
+        for (let i = 0; i < text.length - 1; i++) set.add(text.slice(i, i + 2));
+        return set;
+    };
+    const aSet = grams(x);
+    const bSet = grams(y);
+    let hit = 0;
+    aSet.forEach(g => { if (bSet.has(g)) hit++; });
+    return hit / Math.max(1, Math.min(aSet.size, bSet.size)) >= 0.62;
 }
 
 function dedupeSimilar(list, getText) {
@@ -1054,13 +1065,13 @@ function normalizeData(raw) {
         const seen = new Set();
         return (Array.isArray(list) ? list : []).filter(item => { const key = fn(item); if (seen.has(key)) return false; seen.add(key); return true; });
     };
-    out.孕事 = uniqueBy(out.孕事, item => item.人物);
-    out.孕事子女 = uniqueBy(out.孕事子女, item => `${item.姓名}|${item.生母 || ''}`);
-    out.医疗健康 = uniqueBy(out.医疗健康, item => `${item.人物}|${item.日期}|${item.症状}`);
-    out.奏折 = uniqueBy(out.奏折, item => item.标题);
-    out.关系 = uniqueBy(out.关系, item => [item.甲, item.乙].sort().join('|'));
-    out.书信 = uniqueBy(out.书信, item => `${item.方向 || '收'}|${item.内容}`);
-    if (out.子嗣 && Array.isArray(out.子嗣.子女)) out.子嗣.子女 = uniqueBy(out.子嗣.子女, item => `${item.姓名}|${item.生母 || ''}`);
+    out.孕事 = dedupeSimilar(out.孕事, item => `${item.人物}${item.状态 || ''}${item.备注 || ''}`);
+    out.孕事子女 = dedupeSimilar(out.孕事子女, item => `${item.姓名}${item.生母 || ''}${item.身份 || ''}`);
+    out.医疗健康 = dedupeSimilar(out.医疗健康, item => `${item.人物}${item.日期}${item.症状}${item.诊断}`);
+    out.奏折 = dedupeSimilar(out.奏折, item => `${item.标题}${item.事由}${item.主张}`);
+    out.关系 = dedupeSimilar(out.关系, item => `${item.甲}${item.乙}${item.关系}`);
+    out.书信 = dedupeSimilar(out.书信, item => `${item.方向 || '收'}${item.来源 || ''}${item.内容}`);
+    if (out.子嗣 && Array.isArray(out.子嗣.子女)) out.子嗣.子女 = dedupeSimilar(out.子嗣.子女, item => `${item.姓名}${item.生母 || ''}${item.身份 || ''}`);
     const knownNames = Object.keys(out.NPC状态 || {}).filter(name => !isBlacklisted(name));
     (out.伏笔 || []).forEach(item => {
         const source = cleanName(item.来源);
@@ -2100,10 +2111,15 @@ function derivePregnancies(npcState, list, round) {
 
 function recoverForeshadows(list, events, round) {
     const completed = (Array.isArray(events) ? events : []).filter(event => getProgressNum(event) >= 100);
-    if (!completed.length) return list;
     (Array.isArray(list) ? list : []).forEach(foreshadow => {
         if (!foreshadow || foreshadow.已回收) return;
         const content = String(foreshadow.内容 || '');
+        if (/(已回收|已解决|已结束|已了结|已真相|已伏诛|已落定|已收场)/.test(content)) {
+            foreshadow.已回收 = true;
+            foreshadow.回收回合 = round;
+            return;
+        }
+        if (!completed.length) return;
         const hit = completed.some(event => {
             const name = String(event.事件名 || '');
             const text = String(event.内容 || '');
@@ -2220,13 +2236,13 @@ function mergeGroupData(oldData, fresh) {
         const seen = new Set();
         return (Array.isArray(list) ? list : []).filter(item => { const key = fn(item); if (seen.has(key)) return false; seen.add(key); return true; });
     };
-    out.孕事 = uniqueBy(out.孕事, item => item.人物);
-    out.孕事子女 = uniqueBy(out.孕事子女, item => `${item.姓名}|${item.生母 || ''}`);
-    out.医疗健康 = uniqueBy(out.医疗健康, item => `${item.人物}|${item.日期}|${item.症状}`);
-    out.奏折 = uniqueBy(out.奏折, item => item.标题);
-    out.关系 = uniqueBy(out.关系, item => [item.甲, item.乙].sort().join('|'));
-    out.书信 = uniqueBy(out.书信, item => `${item.方向 || '收'}|${item.内容}`);
-    if (out.子嗣 && Array.isArray(out.子嗣.子女)) out.子嗣.子女 = uniqueBy(out.子嗣.子女, item => `${item.姓名}|${item.生母 || ''}`);
+    out.孕事 = dedupeSimilar(out.孕事, item => `${item.人物}${item.状态 || ''}${item.备注 || ''}`);
+    out.孕事子女 = dedupeSimilar(out.孕事子女, item => `${item.姓名}${item.生母 || ''}${item.身份 || ''}`);
+    out.医疗健康 = dedupeSimilar(out.医疗健康, item => `${item.人物}${item.日期}${item.症状}${item.诊断}`);
+    out.奏折 = dedupeSimilar(out.奏折, item => `${item.标题}${item.事由}${item.主张}`);
+    out.关系 = dedupeSimilar(out.关系, item => `${item.甲}${item.乙}${item.关系}`);
+    out.书信 = dedupeSimilar(out.书信, item => `${item.方向 || '收'}${item.来源 || ''}${item.内容}`);
+    if (out.子嗣 && Array.isArray(out.子嗣.子女)) out.子嗣.子女 = dedupeSimilar(out.子嗣.子女, item => `${item.姓名}${item.生母 || ''}${item.身份 || ''}`);
 
     out.最后更新回合 = round;
     out.版本 = 2;
@@ -2950,14 +2966,7 @@ async function handleAiMessage(messageId, type) {
     const recentSwipe = state.swipedId === messageId && (Date.now() - state.swipeAt) < 8000;
     if (messageId <= state.autoStartId && type !== 'swipe' && !recentSwipe) return;
 
-    const noData = !getGroupData();
-    const initialWindow = noData && !state.initialTried && messageId <= 3;
-    if (initialWindow) {
-        if (s.initialFill !== 'auto') return;
-        state.initialTried = true;
-    } else if (s.trigger !== 'auto') {
-        return;
-    }
+    if (s.trigger !== 'auto') return;
 
     await advanceYearFromMessage(messageId, msg.message);
 
@@ -2978,13 +2987,12 @@ async function handleAiMessage(messageId, type) {
     state.busy = true;
     setBusyUI(true);
     try {
-        const parsed = await generateSub(s, { messageId, initial: initialWindow, reroll: type === 'swipe' });
+        const parsed = await generateSub(s, { messageId, reroll: type === 'swipe' });
         if (parsed && parsed.__error) {
             logEntry.标签 = s.mode === 'main' ? '主API失败' : '副API失败';
             logEntry.原始 = parsed.__raw || '';
             logEntry.结果 = parsed.__error;
             appendLog(logEntry);
-            if (initialWindow) { state.initialTried = false; updateInitialButton(); }
             return;
         }
         logEntry.标签 = '解析成功';
@@ -3003,7 +3011,6 @@ async function handleAiMessage(messageId, type) {
     if (!hasContent(fresh)) {
         logEntry.结果 = '没有可记录的变化';
         appendLog(logEntry);
-        if (initialWindow) { state.initialTried = false; updateInitialButton(); }
         return;
     }
 
@@ -4946,7 +4953,7 @@ const SHELL_HTML = `
         <div class="lx-header">
             <span class="lx-title">群 像 志</span>
             <button type="button" class="lx-batch-btn" data-action="batch-mode" aria-label="批量选择">批量</button>
-            <button type="button" class="lx-initial-btn" data-action="initial-fill" aria-label="补全开局">补全</button>
+
             <button type="button" class="lx-icon-btn" data-action="close" aria-label="关闭">×</button>
         </div>
         <span class="lx-theme-seal" aria-hidden="true">印</span>
@@ -5663,7 +5670,7 @@ function renderCalendar(data) {
     const cell = c => `<div class="lx-time-cell"><span>${escapeHtml(c[0])}</span><b>${escapeHtml(String(c[1]))}</b></div>`;
     const banquetHtml = banquets.length ? `<div class="lx-banquet-card">
         <div class="lx-time-card-title">宴席</div>
-        ${banquets.map(b => `<div class="lx-banquet-item">
+        ${banquets.map(b => `<div class="lx-banquet-item" data-round="${toInt(b.回合, 0)}">
             <div class="lx-banquet-name">${escapeHtml(b.名称)}</div>
             <div class="lx-banquet-line"><b>主家</b>${escapeHtml(b.主家 || '未记')}　<b>地点</b>${escapeHtml(b.地点 || '未记')}</div>
             <div class="lx-banquet-line"><b>日期</b>${escapeHtml(b.日期 || '待定')}　<b>宾客</b>${escapeHtml(b.宾客 || '未记')}</div>
@@ -6366,14 +6373,6 @@ function buildSettingsHTML() {
             </div>
 
             <div class="lx-field">
-                <label class="lx-field-label">开局补全</label>
-                <div class="lx-radio-group">
-                    ${radioRow('lx-initial', 'auto', s.initialFill, '自动补全')}
-                    ${radioRow('lx-initial', 'manual', s.initialFill, '手动补全')}
-                </div>
-                <div class="lx-field-hint">第一次对话时自动读取开局上下文补一次；手动则在标题右侧出现「补全」按钮，只在第一条消息附近显示。</div>
-            </div>
-            <div class="lx-field">
                 <label class="lx-field-label">世界书注入</label>
                 <select id="lx-worldbook-mode" class="lx-select">
                     <option value="follow" ${s.worldbookMode === 'follow' ? 'selected' : ''}>跟随酒馆世界书开关（默认）</option>
@@ -6748,7 +6747,6 @@ function saveSettingsFromForm() {
         enabled: radio('input[name="lx-enabled"]') !== 'false',
         mode: radio('input[name="lx-mode"]') === 'sub' ? 'sub' : 'main',
         trigger: radio('input[name="lx-trigger"]') === 'manual' ? 'manual' : 'auto',
-        initialFill: radio('input[name="lx-initial"]') === 'manual' ? 'manual' : 'auto',
         worldbookMode: ['follow', 'on', 'off'].includes(val('#lx-worldbook-mode')) ? val('#lx-worldbook-mode') : 'follow',
         presetName,
         subApiUrl: val('#lx-api-url').trim(),
@@ -7492,9 +7490,6 @@ async function handleAction(action, element) {
         case 'gen':
             await manualGenerate();
             return;
-        case 'initial-fill':
-            await initialFill();
-            return;
         case 'prompt-preview':
             openPromptPreview();
             return;
@@ -8107,7 +8102,6 @@ function bindTavernEvents() {
     };
 
     on(tavern_events.MESSAGE_RECEIVED, (messageId, type) => handleAiMessage(messageId, type));
-    on(tavern_events.MESSAGE_SENT || 'message_sent', () => setTimeout(maybeFirstUserAuto, 300));
     on(tavern_events.MESSAGE_SWIPED, messageId => handleSwipe(messageId));
     on(tavern_events.MESSAGE_EDITED, messageId => handleEdited(messageId));
     on(tavern_events.MESSAGE_DELETED, () => {
